@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createAllocation, returnAsset } from "@/features/allocations/actions";
+import { createTransferRequest } from "@/features/transfers/actions";
 import { AlertCircle, CheckCircle2, ChevronRight, Search, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -126,12 +127,58 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
               </select>
             </div>
 
-            {isConflict && (
-              <div className="flex gap-2 items-start bg-amber-50 text-amber-700 p-3 rounded-xl border border-amber-200 text-sm">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <span>This asset is already allocated. Allocating it again will automatically mark the previous allocation as returned.</span>
-              </div>
-            )}
+            {isConflict && (() => {
+              const activeAlloc = allocations.find(al => al.assetId === selectedAssetId && al.status === "APPROVED" && !al.actualReturnDate);
+              const holderName = activeAlloc?.user?.name || activeAlloc?.department?.name || "Staff Member";
+              const startDateStr = activeAlloc ? fmtDate(activeAlloc.createdAt) : "";
+              const endDateStr = activeAlloc?.expectedReturnDate ? fmtDate(activeAlloc.expectedReturnDate) : "Indefinite";
+              return (
+                <div className="bg-amber-50 text-amber-900 p-4 rounded-xl border border-amber-200 text-sm space-y-3">
+                  <div className="flex gap-2 items-start">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-700" />
+                    <div>
+                      <div className="font-semibold text-amber-800">Conflict Detected</div>
+                      <div>This asset is currently held by <strong>{holderName}</strong> (Allocated: {startDateStr} &rarr; {endDateStr}).</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const reason = prompt(`Enter transfer reason details:`) || "";
+                      if (!reason.trim()) {
+                        alert("Transfer reason details are required.");
+                        return;
+                      }
+                      const fd = new FormData();
+                      fd.append("assetId", selectedAssetId);
+                      fd.append("expectedTransferDate", new Date(Date.now() + 86400000).toISOString().split("T")[0]);
+                      fd.append("reason", reason);
+                      fd.append("priority", "HIGH");
+                      
+                      const targetUserId = (document.getElementsByName("userId")[0] as HTMLSelectElement)?.value;
+                      const targetDeptId = (document.getElementsByName("departmentId")[0] as HTMLSelectElement)?.value;
+
+                      if (!targetUserId && !targetDeptId) {
+                        alert("Please select target Employee or Department in allocation form before requesting a transfer.");
+                        return;
+                      }
+                      if (targetUserId) fd.append("requestedHolderId", targetUserId);
+                      if (targetDeptId) fd.append("requestedDepartmentId", targetDeptId);
+
+                      const res = await createTransferRequest(fd);
+                      if (res.error) alert(res.error);
+                      else {
+                        alert("Transfer request created in 1-click successfully!");
+                        window.location.reload();
+                      }
+                    }}
+                    className="w-full bg-[#111827] text-white hover:bg-black py-1.5 px-3 rounded-lg text-xs font-semibold transition-all shadow-sm"
+                  >
+                    Request Transfer in 1-Click
+                  </button>
+                </div>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

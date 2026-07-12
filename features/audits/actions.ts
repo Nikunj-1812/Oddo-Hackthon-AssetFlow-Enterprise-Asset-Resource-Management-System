@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -144,11 +145,15 @@ export async function closeAuditCycle(cycleId: string) {
 
     const cycle = await prisma.auditCycle.findUnique({
       where: { id: cycleId },
-      include: { items: true }
+      include: { items: { include: { asset: true } } }
     });
 
     if (!cycle) return { error: "Audit cycle not found." };
     if (cycle.status === "CLOSED") return { error: "Cycle already closed." };
+
+    const missingCount = cycle.items.filter(i => i.verifiedStatus === "MISSING").length;
+    const damagedCount = cycle.items.filter(i => i.verifiedStatus === "DAMAGED").length;
+    const totalCount = cycle.items.length;
 
     await prisma.$transaction(async (tx) => {
       // Close the cycle
@@ -157,17 +162,63 @@ export async function closeAuditCycle(cycleId: string) {
         data: { status: "CLOSED" }
       });
 
-      // Process discrepancies: if item is MISSING, change asset state to LOST
+      // Generate and store discrepancy report
+      const summaryObj = {
+        closedAt: new Date().toISOString(),
+        closedBy: user.name,
+        missing: cycle.items.filter(i => i.verifiedStatus === "MISSING").map(i => ({ id: i.assetId, tag: i.asset.tag, name: i.asset.name })),
+        damaged: cycle.items.filter(i => i.verifiedStatus === "DAMAGED").map(i => ({ id: i.assetId, tag: i.asset.tag, name: i.asset.name })),
+        verified: cycle.items.filter(i => i.verifiedStatus === "VERIFIED").map(i => ({ id: i.assetId, tag: i.asset.tag, name: i.asset.name })),
+      };
+
+      await (tx as any).discrepancyReport.create({
+        data: {
+          auditCycleId: cycleId,
+          summary: JSON.stringify(summaryObj),
+          missingCount,
+          damagedCount,
+          unexpectedCount: 0,
+          totalCount
+        }
+      });
+
+      // Process discrepancies
       for (const item of cycle.items) {
         if (item.verifiedStatus === "MISSING") {
+          const oldAsset = await tx.asset.findUnique({ where: { id: item.assetId } });
           await tx.asset.update({
             where: { id: item.assetId },
             data: { status: "LOST" }
           });
+          
+          await tx.assetHistory.create({
+            data: {
+              assetId: item.assetId,
+              userId: user.id!,
+              userName: user.name,
+              action: "STATUS_TRANSITION",
+              description: `Audit cycle marked asset as missing. Status updated automatically to LOST.`,
+              prevStatus: oldAsset?.status || "UNKNOWN",
+              nextStatus: "LOST"
+            }
+          });
         } else if (item.verifiedStatus === "DAMAGED") {
+          const oldAsset = await tx.asset.findUnique({ where: { id: item.assetId } });
           await tx.asset.update({
             where: { id: item.assetId },
-            data: { status: "DISPOSED", condition: "DAMAGED" }
+            data: { condition: "DAMAGED" }
+          });
+          
+          await tx.assetHistory.create({
+            data: {
+              assetId: item.assetId,
+              userId: user.id!,
+              userName: user.name,
+              action: "CONDITION_CHANGE",
+              description: `Audit cycle marked asset as damaged. Condition updated automatically to DAMAGED.`,
+              prevStatus: oldAsset?.status || "UNKNOWN",
+              nextStatus: oldAsset?.status || "UNKNOWN"
+            }
           });
         }
       }
@@ -180,8 +231,8 @@ export async function closeAuditCycle(cycleId: string) {
     for (const mgr of managers) {
       await createNotification(
         mgr.id,
-        "Audit Cycle Closed",
-        `The audit cycle "${cycle.name}" has been successfully completed and closed.`,
+        "Audit Cycle Closed & Discrepancies Resolved",
+        `The audit cycle "${cycle.name}" has been closed. ${missingCount} assets marked LOST, ${damagedCount} assets marked DAMAGED.`,
         "AUDIT",
         "SUCCESS"
       );
@@ -189,7 +240,7 @@ export async function closeAuditCycle(cycleId: string) {
 
     await logActivity({
       userId: user.id!,
-      action: `Closed audit cycle ${cycle.name} and locked verification checks`,
+      action: `Closed audit cycle ${cycle.name} and logged discrepancies`,
       targetType: "AuditCycle",
       targetId: cycleId,
       oldValue: { status: cycle.status },
@@ -200,5 +251,30 @@ export async function closeAuditCycle(cycleId: string) {
   } catch (error: any) {
     console.error("Close Audit Cycle Error:", error);
     return { error: error.message || "Failed to close audit cycle." };
+  }
+}
+
+export async function updateAuditCycleAuditors(cycleId: string, auditorIds: string[]) {
+  try {
+    const user = await verifyAuditor();
+    const updated = await prisma.auditCycle.update({
+      where: { id: cycleId },
+      data: {
+        auditorIds: auditorIds.join(",")
+      } as any
+    });
+
+    await logActivity({
+      userId: user.id!,
+      action: `Updated assigned auditors for audit cycle "${updated.name}"`,
+      targetType: "AuditCycle",
+      targetId: cycleId,
+      newValue: { auditorIds }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Update Audit Cycle Auditors Error:", error);
+    return { error: error.message || "Failed to update auditors." };
   }
 }

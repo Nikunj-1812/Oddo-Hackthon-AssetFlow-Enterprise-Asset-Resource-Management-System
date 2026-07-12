@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { registerAsset, updateAsset, deleteAsset } from "@/features/assets/actions";
 import {
   transitionAssetStatus, retireAssetAction, disposeAssetAction,
@@ -12,12 +12,30 @@ import {
   Edit2, Trash2, X, Clock, Wrench, Tag, MapPin,
   DollarSign, Package, CheckCircle, XCircle, ChevronUp, ChevronDown,
   Eye, ShieldCheck, ShieldAlert, ShieldX, TrendingDown, Building2,
-  FileText, Image as ImageIcon, AlertTriangle, RefreshCw, Archive, Zap
+  FileText, Image as ImageIcon, Archive
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+// ── FORM FIELD COMPONENT (must be outside component to avoid re-creation on render) ──
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+      <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle = {
+  padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb",
+  fontSize: "0.85rem", fontFamily: "inherit", outline: "none", background: "#fafafa",
+  transition: "border-color 0.2s",
+};
+
+const selectStyle = { ...inputStyle, cursor: "pointer" };
 
 interface Props {
   initialAssets: any[];
@@ -259,21 +277,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
     w.document.close(); w.print();
   };
 
-  // ── FORM FIELDS ──
-  const FormField = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-      <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151" }}>{label}</label>
-      {children}
-    </div>
-  );
 
-  const inputStyle = {
-    padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb",
-    fontSize: "0.85rem", fontFamily: "inherit", outline: "none", background: "#fafafa",
-    transition: "border-color 0.2s",
-  };
-
-  const selectStyle = { ...inputStyle, cursor: "pointer" };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", fontFamily: "'Inter', sans-serif" }}>

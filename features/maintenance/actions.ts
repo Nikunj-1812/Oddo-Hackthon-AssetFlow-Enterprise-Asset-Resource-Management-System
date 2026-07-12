@@ -111,6 +111,18 @@ export async function updateMaintenanceStatus(
         });
       }
 
+      // Log to maintenanceHistory timeline
+      await (tx as any).maintenanceHistory.create({
+        data: {
+          requestId,
+          userId: operator.id!,
+          userName: operator.name,
+          prevStatus: request.status,
+          nextStatus: nextStatus,
+          comments: technicianName ? `Technician assigned: ${technicianName}` : `Status updated to ${nextStatus}`
+        }
+      });
+
       return updatedRequest;
     });
 
@@ -155,5 +167,51 @@ export async function updateMaintenanceStatus(
   } catch (error: any) {
     console.error("Update Maintenance Status Error:", error);
     return { error: error.message || "Failed to update status." };
+  }
+}
+
+export async function addMaintenancePhoto(requestId: string, url: string, description: string) {
+  try {
+    const user = await verifyUser();
+    
+    const photo = await (prisma as any).maintenancePhoto.create({
+      data: {
+        requestId,
+        url,
+        description
+      }
+    });
+
+    await logActivity({
+      userId: user.id!,
+      action: `Uploaded maintenance photo for ticket ${requestId}`,
+      targetType: "MaintenanceRequest",
+      targetId: requestId,
+      newValue: photo
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Add Maintenance Photo Error:", error);
+    return { error: error.message || "Failed to attach photo." };
+  }
+}
+
+export async function fetchMaintenanceDetails(requestId: string) {
+  try {
+    const [photos, history] = await Promise.all([
+      (prisma as any).maintenancePhoto.findMany({
+        where: { requestId },
+        orderBy: { createdAt: "desc" }
+      }),
+      (prisma as any).maintenanceHistory.findMany({
+        where: { requestId },
+        orderBy: { createdAt: "asc" }
+      })
+    ]);
+    return { photos, history };
+  } catch (error: any) {
+    console.error("Fetch Maintenance Details Error:", error);
+    return { photos: [], history: [] };
   }
 }
