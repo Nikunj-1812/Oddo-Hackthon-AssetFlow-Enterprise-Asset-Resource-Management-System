@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { prisma } from "@/lib/prisma";
@@ -160,5 +161,189 @@ export async function returnAsset(formData: FormData) {
   } catch (error: any) {
     console.error("Return Asset Error:", error);
     return { error: error.message || "Failed to return asset." };
+  }
+}
+
+export async function submitReturnRequest(allocationId: string, notes: string) {
+  try {
+    const user = await verifyCanManageAllocations();
+
+    const allocation = await prisma.allocation.findUnique({
+      where: { id: allocationId },
+      include: { asset: true }
+    });
+
+    if (!allocation) return { error: "Allocation not found." };
+
+    // Create the Return Request with all required fields
+    const request = await prisma.returnRequest.create({
+      data: {
+        allocationId,
+        assetId: allocation.assetId,
+        userId: allocation.userId || user.id!,
+        reason: notes || "Employee return request",
+        status: "PENDING",
+        notes
+      }
+    });
+
+    // Notify managers
+    const managers = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "ASSET_MANAGER"] }, status: "ACTIVE" }
+    });
+    for (const mgr of managers) {
+      await createNotification(
+        mgr.id,
+        "Return Request Filed",
+        `Employee ${user.name} requested to return asset ${allocation.asset.name} (${allocation.asset.tag}).`,
+        "ALLOCATION",
+        "INFO"
+      );
+    }
+
+    await logActivity({
+      userId: user.id!,
+      action: `Submitted return request for asset ${allocation.asset.tag}`,
+      targetType: "Allocation",
+      targetId: allocationId,
+      newValue: request
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Submit Return Request Error:", error);
+    return { error: error.message || "Failed to submit return request." };
+  }
+}
+
+export async function approveReturnRequest(requestId: string, conditionOnReturn: string, notes: string) {
+  try {
+    const operator = await verifyCanManageAllocations();
+
+    const request = await prisma.returnRequest.findUnique({
+      where: { id: requestId },
+      include: { allocation: { include: { asset: true } } }
+    });
+
+    if (!request) return { error: "Return request not found." };
+
+    const allocation = request.allocation;
+
+    await prisma.$transaction(async (tx) => {
+      // Approve the request
+      await tx.returnRequest.update({
+        where: { id: requestId },
+        data: {
+          status: "APPROVED",
+          conditionOnReturn: conditionOnReturn as any,
+          notes
+        }
+      });
+
+      // Update allocation record
+      await tx.allocation.update({
+        where: { id: request.allocationId },
+        data: {
+          actualReturnDate: new Date(),
+          status: "RESOLVED",
+          conditionOnReturn: conditionOnReturn as any,
+          notes: notes
+        }
+      });
+
+      // Revert asset status: if condition needs repair or is damaged, move status to UNDER_MAINTENANCE! Otherwise AVAILABLE.
+      const shouldMaint = ["NEEDS_REPAIR", "DAMAGED"].includes(conditionOnReturn);
+      await tx.asset.update({
+        where: { id: allocation.assetId },
+        data: {
+          status: shouldMaint ? "UNDER_MAINTENANCE" : "AVAILABLE",
+          condition: conditionOnReturn as any
+        }
+      });
+
+      // Log asset history transition
+      await tx.assetHistory.create({
+        data: {
+          assetId: allocation.assetId,
+          userId: operator.id!,
+          userName: operator.name,
+          action: "RETURN_PROCESS",
+          description: `Employee return request approved. Asset condition: ${conditionOnReturn}.`,
+          prevStatus: "ALLOCATED",
+          nextStatus: shouldMaint ? "UNDER_MAINTENANCE" : "AVAILABLE"
+        }
+      });
+    });
+
+    // Notify employee
+    if (allocation.userId) {
+      await createNotification(
+        allocation.userId,
+        "Return Request Approved",
+        `Your return request for asset ${allocation.asset.name} has been processed and approved. Check-in condition: ${conditionOnReturn}.`,
+        "ALLOCATION",
+        "SUCCESS"
+      );
+    }
+
+    await logActivity({
+      userId: operator.id!,
+      action: `Approved return request for asset ${allocation.asset.tag}`,
+      targetType: "Allocation",
+      targetId: allocation.id,
+      newValue: { status: "APPROVED" }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Approve Return Request Error:", error);
+    return { error: error.message || "Failed to approve return request." };
+  }
+}
+
+export async function rejectReturnRequest(requestId: string, comments: string) {
+  try {
+    const operator = await verifyCanManageAllocations();
+
+    const request = await prisma.returnRequest.findUnique({
+      where: { id: requestId },
+      include: { allocation: { include: { asset: true } } }
+    });
+
+    if (!request) return { error: "Return request not found." };
+
+    const allocation = request.allocation;
+
+    await prisma.returnRequest.update({
+      where: { id: requestId },
+      data: {
+        status: "REJECTED",
+        notes: comments
+      }
+    });
+
+    // Notify employee
+    if (allocation.userId) {
+      await createNotification(
+        allocation.userId,
+        "Return Request Rejected",
+        `Your return request for asset ${allocation.asset.name} was rejected. Feedback: ${comments}`,
+        "ALLOCATION",
+        "WARNING"
+      );
+    }
+
+    await logActivity({
+      userId: operator.id!,
+      action: `Rejected return request for asset ${allocation.asset.tag}`,
+      targetType: "Allocation",
+      targetId: allocation.id,
+      newValue: { status: "REJECTED", comments }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Reject Return Request Error:", error);
+    return { error: error.message || "Failed to reject return request." };
   }
 }

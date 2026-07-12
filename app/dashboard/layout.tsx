@@ -18,6 +18,7 @@ import {
   ArrowRightLeft,
   Bell,
   Scan,
+  RotateCcw,
 } from "lucide-react";
 
 interface SidebarLink {
@@ -91,6 +92,14 @@ const sidebarLinks: SidebarLink[] = [
     label: "QR Scanner",
     icon: Scan,
     iconName: "Scan",
+    roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+    section: "Operations",
+  },
+  {
+    href: "/dashboard/return-requests",
+    label: "Return Requests",
+    icon: RotateCcw,
+    iconName: "RotateCcw",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Operations",
   },

@@ -9,12 +9,9 @@ export default async function AuditsPage() {
 
   const user = session.user;
   const role = (user as any).role || "EMPLOYEE";
-  if (role !== "ADMIN" && role !== "ASSET_MANAGER") {
-    redirect("/dashboard");
-  }
 
-  // Fetch cycles and locations for scoping
-  const [cycles, assets] = await Promise.all([
+  // Fetch cycles, locations for scoping, and active users
+  const [cycles, assets, allUsers] = await Promise.all([
     prisma.auditCycle.findMany({
       include: {
         items: {
@@ -29,6 +26,10 @@ export default async function AuditsPage() {
     prisma.asset.findMany({
       select: { location: true },
       distinct: ["location"],
+    }),
+    prisma.user.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -48,6 +49,8 @@ export default async function AuditsPage() {
       <AuditsClient
         cycles={cycles}
         locations={locations}
+        allUsers={allUsers}
+        currentUser={user}
       />
     </div>
   );

@@ -1,4 +1,6 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useState, useRef, useEffect } from "react";
 import { Bell, Settings, HelpCircle, Check, X, Eye, ShieldAlert, Archive, Inbox, Info, RefreshCw } from "lucide-react";

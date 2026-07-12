@@ -31,6 +31,8 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   createMaintenanceRequest,
   updateMaintenanceStatus,
+  addMaintenancePhoto,
+  fetchMaintenanceDetails
 } from "@/features/maintenance/actions";
 import {
   Wrench,
@@ -176,6 +178,25 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
+
+  // Dynamic ticket workflow data loading
+  const [ticketPhotos, setTicketPhotos] = useState<any[]>([]);
+  const [ticketHistory, setTicketHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (selectedCard) {
+      loadTicketDetails(selectedCard.id);
+    } else {
+      setTicketPhotos([]);
+      setTicketHistory([]);
+    }
+  }, [selectedCard]);
+
+  const loadTicketDetails = async (id: string) => {
+    const details = await fetchMaintenanceDetails(id);
+    setTicketPhotos(details.photos || []);
+    setTicketHistory(details.history || []);
+  };
   const [selectedRequestForTech, setSelectedRequestForTech] = useState<any | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   
@@ -469,6 +490,75 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                     <div style={{ fontSize: "0.825rem", color: "#111827", fontWeight: 600 }}>{item.value}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Photo Attachments Section */}
+              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: "14px" }}>
+                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Ticket Photos</div>
+                
+                {ticketPhotos.length === 0 ? (
+                  <div style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic", marginBottom: "10px" }}>No photos attached.</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "10px" }}>
+                    {ticketPhotos.map((photo) => (
+                      <div key={photo.id} style={{ borderRadius: "8px", border: "1px solid #e5e7eb", padding: "4px", background: "#fcfcfc" }}>
+                        <a href={photo.url} target="_blank" rel="noreferrer">
+                          <img src={photo.url} alt="Defect" style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "6px" }} />
+                        </a>
+                        <div style={{ fontSize: "0.65rem", color: "#4b5563", marginTop: "4px", padding: "0 2px" }}>{photo.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Photo Form */}
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const url = fd.get("photoUrl") as string;
+                  const desc = fd.get("photoDesc") as string;
+                  if (!url || !desc) return;
+                  const res = await addMaintenancePhoto(selectedCard.id, url, desc);
+                  if (res.error) alert(res.error);
+                  else {
+                    (e.target as HTMLFormElement).reset();
+                    loadTicketDetails(selectedCard.id);
+                  }
+                }} style={{ display: "flex", flexDirection: "column", gap: "6px", background: "#fafafa", padding: "10px", borderRadius: "8px", border: "1px solid #f0f0f0" }}>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#6b7280" }}>Attach Photo Link</div>
+                  <input name="photoUrl" placeholder="Image URL (e.g. http://...)" required style={{ padding: "6px 8px", borderRadius: "6px", border: "1px solid #e5e7eb", fontSize: "0.75rem" }} />
+                  <input name="photoDesc" placeholder="Brief note (e.g. Broken port)" required style={{ padding: "6px 8px", borderRadius: "6px", border: "1px solid #e5e7eb", fontSize: "0.75rem" }} />
+                  <button type="submit" style={{ padding: "5px", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "0.72rem", cursor: "pointer", fontWeight: 600 }}>Add Photo</button>
+                </form>
+              </div>
+
+              {/* Approval History Timeline Section */}
+              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: "14px" }}>
+                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>Workflow Timeline Log</div>
+                
+                {ticketHistory.length === 0 ? (
+                  <div style={{ fontSize: "0.75rem", color: "#9ca3af", fontStyle: "italic" }}>No transition log history yet.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {ticketHistory.map((hist) => (
+                      <div key={hist.id} style={{ display: "flex", gap: "8px", fontSize: "0.75rem" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#92E4BA" }} />
+                          <div style={{ flex: 1, width: "2px", background: "#e5e7eb" }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: "#111827" }}>
+                            {hist.prevStatus} &rarr; <span style={{ color: "#047857" }}>{hist.nextStatus}</span>
+                          </div>
+                          <div style={{ color: "#6b7280", marginTop: "2px" }}>{hist.comments}</div>
+                          <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "2px" }}>
+                            By {hist.userName} · {new Date(hist.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {isManager && (

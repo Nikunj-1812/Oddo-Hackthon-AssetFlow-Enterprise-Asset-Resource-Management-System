@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createAuditCycle, verifyAuditItem, closeAuditCycle } from "@/features/audits/actions";
+import { createAuditCycle, verifyAuditItem, closeAuditCycle, updateAuditCycleAuditors } from "@/features/audits/actions";
 import {
   ClipboardCheck,
   MapPin,
@@ -17,6 +17,9 @@ import {
   Lock,
   ChevronRight,
   Package,
+  User,
+  AlertTriangle,
+  FolderOpen
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,15 +27,37 @@ import { Badge } from "@/components/ui/badge";
 interface Props {
   cycles: any[];
   locations: string[];
+  allUsers: any[];
+  currentUser: any;
 }
 
-export default function AuditsClient({ cycles, locations }: Props) {
+export default function AuditsClient({ cycles, locations, allUsers = [], currentUser }: Props) {
   const [selectedCycle, setSelectedCycle] = useState<any | null>(null);
+
+  // Re-assign auditors state
+  const [editingAuditors, setEditingAuditors] = useState(false);
+  const [selectedAuditorIds, setSelectedAuditorIds] = useState<string[]>([]);
 
   // Form states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const role = currentUser?.role || "EMPLOYEE";
+  const isManagerOrAdmin = ["ADMIN", "ASSET_MANAGER"].includes(role);
+
+  // Compute Checker metrics
+  const checkerCycles = cycles.filter((c) => {
+    if (isManagerOrAdmin) return true;
+    const ids = c.auditorIds ? c.auditorIds.split(",") : [];
+    return ids.includes(currentUser?.id);
+  });
+
+  const stats = {
+    assigned: checkerCycles.length,
+    pending: checkerCycles.filter(c => c.status === "ACTIVE").length,
+    completed: checkerCycles.filter(c => c.status === "CLOSED").length,
+  };
 
   const handleCreateCycle = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,11 +86,13 @@ export default function AuditsClient({ cycles, locations }: Props) {
         setSuccess(false);
         setSubmitting(false);
         window.location.reload();
-      }, 800);
+      }, 1000);
     }
   };
 
-  const handleVerifyItem = async (itemId: string, status: any, notes?: string) => {
+  const handleVerifyItem = async (itemId: string, status: "VERIFIED" | "MISSING" | "DAMAGED") => {
+    setError(null);
+    const notes = prompt(`Enter optional audit verification notes:`) || "";
     const result = await verifyAuditItem(itemId, status, notes);
     if (result?.error) {
       alert(result.error);
@@ -75,162 +102,195 @@ export default function AuditsClient({ cycles, locations }: Props) {
   };
 
   const handleCloseCycle = async (cycleId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to close this audit cycle? This will lock all audit items and update missing items to LOST/DISPOSED."
-      )
-    )
-      return;
-
+    if (!confirm("Are you sure you want to close this cycle? This will lock all checklist runs and resolve discrepancies.")) return;
+    setError(null);
     const result = await closeAuditCycle(cycleId);
     if (result?.error) {
       alert(result.error);
     } else {
+      alert("Audit cycle closed and locked!");
+      window.location.reload();
+    }
+  };
+
+  const handleUpdateCheckers = async () => {
+    if (!selectedCycle) return;
+    const result = await updateAuditCycleAuditors(selectedCycle.id, selectedAuditorIds);
+    if (result?.error) {
+      alert(result.error);
+    } else {
+      alert("Checkers updated successfully.");
+      setEditingAuditors(false);
       window.location.reload();
     }
   };
 
   const exportChecklistCSV = () => {
-    if (!activeCycleDetail) return;
-    const headers = ["Asset Tag", "Asset Name", "Verified By", "Verified Status", "Notes"];
-    const rows = activeCycleDetail.items.map((item: any) => [
-      item.asset.tag,
-      item.asset.name,
-      item.verifiedBy?.name || "-",
-      item.verifiedStatus,
-      item.notes || "-",
+    if (!selectedCycle) return;
+    const headers = ["Asset Tag", "Asset Name", "Serial Number", "Verified Status", "Verified By", "Notes"];
+    const rows = selectedCycle.items.map((i: any) => [
+      i.asset.tag,
+      i.asset.name,
+      i.asset.serialNumber || "—",
+      i.verifiedStatus,
+      i.verifiedBy?.name || "Pending",
+      i.notes || ""
     ]);
 
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [
-        headers.join(","),
-        ...rows.map((e: any[]) =>
-          e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")
-        ),
-      ].join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map((e: any[]) => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `audit_${activeCycleDetail.name.replace(/\s+/g, "_")}_checklist.csv`);
+    link.setAttribute("download", `checklist_${selectedCycle.name.replace(/\s+/g, "_")}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // Find active cycle detail
   const activeCycleDetail = cycles.find((c) => c.id === selectedCycle?.id);
-
-  const inputStyle = {
-    padding: "9px 12px",
-    borderRadius: "9px",
-    border: "1.5px solid #e5e7eb",
-    fontSize: "0.85rem",
-    fontFamily: "inherit",
-    outline: "none",
-    background: "#fafafa",
-    transition: "border-color 0.2s",
-  };
+  const cycleAuditorIds = activeCycleDetail?.auditorIds ? activeCycleDetail.auditorIds.split(",") : [];
+  const assignedCheckers = allUsers.filter(u => cycleAuditorIds.includes(u.id));
 
   return (
-    <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", fontFamily: "'Inter', sans-serif" }} className="animate-fade-up">
-      {/* COLUMN 1: Create Cycle */}
-      <div style={{ flex: 1, minWidth: "320px", display: "flex", flexDirection: "column" }}>
-        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", height: "100%" }}>
-          <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
-            <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
-              Initialize Audit Cycle
-            </CardTitle>
-            <CardDescription style={{ fontSize: "0.78rem" }}>
-              Schedule checksheets for specific regional locations
-            </CardDescription>
-          </CardHeader>
-          <CardContent style={{ padding: "10px 20px 20px 20px" }}>
-            <form onSubmit={handleCreateCycle} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                <label style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>Cycle Name / Reference</label>
-                <input
-                  name="name"
-                  required
-                  placeholder="e.g. Q3 HQ Furniture Verification"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                <label style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>Scope Location</label>
-                <select
-                  name="location"
-                  required
-                  style={{ ...inputStyle, cursor: "pointer", color: "#374151", background: "#fafafa" }}
-                >
-                  <option value="">— Choose Location —</option>
-                  {locations.map((loc, idx) => (
-                    <option key={idx} value={loc}>
-                      {loc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>Start Date</label>
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    style={inputStyle}
-                  />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                  <label style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>End Date</label>
-                  <input
-                    name="endDate"
-                    type="date"
-                    required
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <div style={{ padding: "8px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "8px", fontSize: "0.78rem" }}>
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div style={{ padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "8px", fontSize: "0.78rem" }}>
-                  ✓ Audit cycle created checklist!
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{
-                  padding: "10px",
-                  borderRadius: "9px",
-                  border: "none",
-                  backgroundColor: "#92E4BA",
-                  color: "#1a4a2e",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: "0.825rem",
-                  boxShadow: "0 4px 10px rgba(146,228,186,0.25)",
-                  transition: "all 0.2s",
-                }}
-              >
-                {submitting ? "Bootstrapping..." : "Start Scoped Audit"}
-              </button>
-            </form>
-          </CardContent>
-        </Card>
+    <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
+      
+      {/* AUDITOR DASHBOARD STATISTICS GRID */}
+      <div style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+        {[
+          { title: "My Assigned Audits", value: stats.assigned, desc: "Total cycles assigned for checkout", bg: "#eff6ff", color: "#2563eb" },
+          { title: "Pending Verifications", value: stats.pending, desc: "Active verification runs needing review", bg: "#fffbeb", color: "#d97706" },
+          { title: "Completed Cycles", value: stats.completed, desc: "Archived audit cycle records", bg: "#e8faf3", color: "#059669" }
+        ].map((item, idx) => (
+          <div key={idx} style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "14px", border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{item.title}</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: item.color, marginTop: "2px" }}>{item.value}</div>
+            <div style={{ fontSize: "0.72rem", color: "#9ca3af", marginTop: "4px" }}>{item.desc}</div>
+          </div>
+        ))}
       </div>
 
-      {/* COLUMN 2: Cycles list */}
-      <div style={{ flex: 1, minWidth: "320px", display: "flex", flexDirection: "column" }}>
-        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", height: "100%" }}>
+      {/* COLUMN 1: Action triggers / New Cycle / Auditor dashboard */}
+      <div style={{ flex: 1, minWidth: "300px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        
+        {/* Only Manager/Admin can create cycle */}
+        {isManagerOrAdmin ? (
+          <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
+            <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
+              <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
+                Start Audit Cycle
+              </CardTitle>
+              <CardDescription style={{ fontSize: "0.78rem" }}>
+                Initialize location-scoped checklist verifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent style={{ padding: "10px 20px 20px 20px" }}>
+              <form onSubmit={handleCreateCycle} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Cycle Name</label>
+                  <input
+                    name="name"
+                    required
+                    placeholder="e.g. Q3 HQ Stock Check"
+                    style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Select Location Scope</label>
+                  <select
+                    name="location"
+                    required
+                    style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", cursor: "pointer", background: "#ffffff" }}
+                  >
+                    <option value="">-- Choose Location --</option>
+                    {locations.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Checker selection checkbox list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Assign Checkers</label>
+                  <div style={{ maxHeight: "110px", overflowY: "auto", border: "1.5px solid #e5e7eb", borderRadius: "9px", padding: "8px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {allUsers.map((u) => (
+                      <label key={u.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", cursor: "pointer" }}>
+                        <input type="checkbox" name="auditorIds" value={u.id} style={{ width: 14, height: 14 }} />
+                        {u.name} ({u.role.replace(/_/g, " ")})
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Start Date</label>
+                    <input
+                      name="startDate"
+                      type="date"
+                      required
+                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>End Date</label>
+                    <input
+                      name="endDate"
+                      type="date"
+                      required
+                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <div style={{ padding: "8px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "8px", fontSize: "0.78rem" }}>
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div style={{ padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "8px", fontSize: "0.78rem" }}>
+                    ✓ Audit cycle created checklist!
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    padding: "10px",
+                    borderRadius: "9px",
+                    border: "none",
+                    backgroundColor: "#92E4BA",
+                    color: "#1a4a2e",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontSize: "0.825rem",
+                    boxShadow: "0 4px 10px rgba(146,228,186,0.25)"
+                  }}
+                >
+                  {submitting ? "Bootstrapping..." : "Start Scoped Audit"}
+                </button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : (
+          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "16px", borderRadius: "12px", display: "flex", gap: "10px" }}>
+            <AlertTriangle color="#2563eb" style={{ flexShrink: 0, marginTop: "2px" }} />
+            <div>
+              <div style={{ fontSize: "0.825rem", fontWeight: 700, color: "#1e3a8a" }}>Checker Access Active</div>
+              <div style={{ fontSize: "0.75rem", color: "#1e40af", marginTop: "3px", lineHeight: 1.4 }}>
+                You are logged in as an Auditor checker. Select your assigned cycles from the menu to record stock presence.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* COLUMN 2: Cycles list */}
+        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
           <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
             <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
               Verification Cycles
@@ -241,18 +301,18 @@ export default function AuditsClient({ cycles, locations }: Props) {
           </CardHeader>
           <CardContent style={{ padding: "10px 20px 20px 20px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {cycles.length === 0 ? (
+              {checkerCycles.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "1.5rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-                  No audit cycles registered.
+                  No assigned audit runs found.
                 </div>
               ) : (
-                cycles.map((c) => {
+                checkerCycles.map((c) => {
                   const isActive = selectedCycle?.id === c.id;
                   const isClosed = c.status === "CLOSED";
                   return (
                     <div
                       key={c.id}
-                      onClick={() => setSelectedCycle(c)}
+                      onClick={() => { setSelectedCycle(c); setEditingAuditors(false); }}
                       style={{
                         padding: "12px 14px",
                         border: `1.5px solid ${isActive ? "#92E4BA" : "#f0f0f0"}`,
@@ -261,21 +321,12 @@ export default function AuditsClient({ cycles, locations }: Props) {
                         cursor: "pointer",
                         transition: "all 0.18s ease",
                       }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) e.currentTarget.style.borderColor = "#e5e7eb";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) e.currentTarget.style.borderColor = "#f0f0f0";
-                      }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontSize: "0.825rem", fontWeight: 700, color: "#111827" }}>
                           {c.name}
                         </span>
-                        <span
-                          className={`status-badge ${isClosed ? "status-retired" : "status-approved"}`}
-                          style={{ padding: "2px 8px", fontSize: "0.68rem" }}
-                        >
+                        <span className={`status-badge ${isClosed ? "status-retired" : "status-approved"}`} style={{ padding: "2px 8px", fontSize: "0.68rem" }}>
                           {c.status}
                         </span>
                       </div>
@@ -299,43 +350,39 @@ export default function AuditsClient({ cycles, locations }: Props) {
           backgroundColor: "#ffffff",
           padding: "22px",
           borderRadius: "14px",
-          border: "1px solid #f0f0f0",
+          border: "1px solid #f0f0f0"
         }}
       >
         {activeCycleDetail ? (
-          <div className="animate-fade-up">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: "1px solid #f0f0f0",
-                paddingBottom: "16px",
-                marginBottom: "16px",
-                flexWrap: "wrap",
-                gap: "10px",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: "220px" }}>
-                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#111827" }}>
-                  {activeCycleDetail.name}
-                </h2>
-                <span
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    marginTop: "3px",
-                  }}
-                >
-                  <MapPin size={12} /> Scope location: <strong>{activeCycleDetail.location}</strong>
-                </span>
+          <div className="animate-fade-up" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            
+            {/* Header section */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #f0f0f0", paddingBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#111827" }}>{activeCycleDetail.name}</h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "4px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 500, display: "flex", alignItems: "center", gap: "4px" }}>
+                    <MapPin size={12} /> Scope location: <strong>{activeCycleDetail.location}</strong>
+                  </span>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 500, display: "flex", alignItems: "center", gap: "4px" }}>
+                    <User size={12} /> Assigned Checkers: <strong style={{ color: "#374151" }}>{assignedCheckers.map(u => u.name).join(", ") || "None"}</strong>
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                {isManagerOrAdmin && activeCycleDetail.status === "ACTIVE" && (
+                  <button
+                    onClick={() => {
+                      setSelectedAuditorIds(cycleAuditorIds);
+                      setEditingAuditors(!editingAuditors);
+                    }}
+                    style={{ padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "8px", background: "#ffffff", color: "#374151", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Assign Checkers
+                  </button>
+                )}
+
                 <button
                   onClick={exportChecklistCSV}
                   style={{
@@ -355,7 +402,7 @@ export default function AuditsClient({ cycles, locations }: Props) {
                   <FileSpreadsheet size={13} /> Export CSV
                 </button>
 
-                {activeCycleDetail.status === "ACTIVE" && (
+                {isManagerOrAdmin && activeCycleDetail.status === "ACTIVE" && (
                   <button
                     onClick={() => handleCloseCycle(activeCycleDetail.id)}
                     style={{
@@ -378,6 +425,69 @@ export default function AuditsClient({ cycles, locations }: Props) {
                 )}
               </div>
             </div>
+
+            {/* Checker Re-assignment selector */}
+            {editingAuditors && (
+              <div style={{ background: "#fafafa", padding: "14px", borderRadius: "10px", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Select Checkers for this Cycle</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                  {allUsers.map((u) => {
+                    const isChecked = selectedAuditorIds.includes(u.id);
+                    return (
+                      <label key={u.id} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedAuditorIds([...selectedAuditorIds, u.id]);
+                            else setSelectedAuditorIds(selectedAuditorIds.filter(id => id !== u.id));
+                          }}
+                          style={{ width: 14, height: 14 }}
+                        />
+                        {u.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                  <button onClick={() => setEditingAuditors(false)} style={{ padding: "5px 10px", border: "1px solid #d1d5db", borderRadius: "5px", fontSize: "0.72rem", background: "transparent", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={handleUpdateCheckers} style={{ padding: "5px 12px", border: "none", borderRadius: "5px", fontSize: "0.72rem", background: "#92E4BA", color: "#1a4a2e", fontWeight: 700, cursor: "pointer" }}>Save Checkers</button>
+                </div>
+              </div>
+            )}
+
+            {/* Discrepancy report preview if closed */}
+            {activeCycleDetail.status === "CLOSED" && (
+              <div style={{ background: "#fef2f2", border: "1.5px solid #fee2e2", padding: "16px", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertOctagon size={16} color="#dc2626" />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#991b1b" }}>Discrepancy Resolution Summary</span>
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#991b1b", lineHeight: 1.4 }}>
+                  This cycle has been completed and locked. Missing assets have been flagged as <strong>LOST</strong> in the directory, and damaged items set to <strong>DAMAGED</strong>.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "4px" }}>
+                  <div style={{ background: "#ffffff", padding: "8px", borderRadius: "8px", textAlign: "center", border: "1px solid #fca5a5" }}>
+                    <div style={{ fontSize: "0.62rem", color: "#991b1b", fontWeight: 700, textTransform: "uppercase" }}>Verified</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1a4a2e", marginTop: "2px" }}>
+                      {activeCycleDetail.items.filter((i: any) => i.verifiedStatus === "VERIFIED").length}
+                    </div>
+                  </div>
+                  <div style={{ background: "#ffffff", padding: "8px", borderRadius: "8px", textAlign: "center", border: "1px solid #fca5a5" }}>
+                    <div style={{ fontSize: "0.62rem", color: "#991b1b", fontWeight: 700, textTransform: "uppercase" }}>Missing (LOST)</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#dc2626", marginTop: "2px" }}>
+                      {activeCycleDetail.items.filter((i: any) => i.verifiedStatus === "MISSING").length}
+                    </div>
+                  </div>
+                  <div style={{ background: "#ffffff", padding: "8px", borderRadius: "8px", textAlign: "center", border: "1px solid #fca5a5" }}>
+                    <div style={{ fontSize: "0.62rem", color: "#991b1b", fontWeight: 700, textTransform: "uppercase" }}>Damaged</div>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#d97706", marginTop: "2px" }}>
+                      {activeCycleDetail.items.filter((i: any) => i.verifiedStatus === "DAMAGED").length}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Checklist Table */}
             <div className="erp-table-container">

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
+import { submitReturnRequest } from "@/features/allocations/actions";
 
 interface Props {
   stats: {
@@ -146,6 +147,7 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
                     <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Asset</th>
                     <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Assigned Date</th>
                     <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E7EB]">
@@ -172,6 +174,22 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
                               <CheckCircle2 size={12} /> Active
                             </span>
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={async () => {
+                              const notes = prompt("Enter any return comments/reason:") || "";
+                              const res = await submitReturnRequest(alloc.id, notes);
+                              if (res.error) alert(res.error);
+                              else {
+                                alert("Return request submitted to manager!");
+                                window.location.reload();
+                              }
+                            }}
+                            className="bg-white border border-[#E5E7EB] text-[#111827] px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#FAFAFA] transition-all"
+                          >
+                            Request Return
+                          </button>
                         </td>
                       </tr>
                     );
