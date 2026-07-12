@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   User, Calendar, ChevronRight, Clock, AlertTriangle, AlertCircle, ShieldAlert
 } from "lucide-react";
@@ -24,7 +22,7 @@ export const priorityConfig: Record<string, { bg: string; color: string; icon: a
 };
 
 // --- Kanban Card Component ---
-export function KanbanCard({ req, style, isDragging, isOverlay, onMovePrev, onMoveNext, ...props }: any) {
+export function KanbanCard({ req, style, isDragging, onMovePrev, onMoveNext, ...props }: any) {
   const pConfig = priorityConfig[req.priority] || priorityConfig.LOW;
   const PIcon = pConfig.icon;
 
@@ -35,7 +33,7 @@ export function KanbanCard({ req, style, isDragging, isOverlay, onMovePrev, onMo
   return (
     <div
       style={style}
-      className={`kanban-card ${isDragging || isOverlay ? "kanban-card-dragging" : ""}`}
+      className={`kanban-card ${isDragging ? "kanban-card-dragging" : ""}`}
       {...props}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -126,61 +124,6 @@ export function KanbanCard({ req, style, isDragging, isOverlay, onMovePrev, onMo
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// --- Sortable Card Wrapper Component ---
-export function SortableCard({ req, onClick, onMovePrev, onMoveNext }: { req: any; onClick?: () => void; onMovePrev?: () => void; onMoveNext?: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: req.id,
-    data: { type: "Card", request: req },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-    cursor: isDragging ? "grabbing" : "grab",
-  };
-
-  return (
-    <KanbanCard
-      req={req}
-      ref={setNodeRef}
-      style={style}
-      isDragging={isDragging}
-      onClick={(e: any) => {
-        if (isDragging) return;
-        onClick?.();
-      }}
-      onMovePrev={onMovePrev}
-      onMoveNext={onMoveNext}
-      {...attributes}
-      {...listeners}
-    />
-  );
-}
-
-// --- Column Droppable Component ---
-export function KanbanColumnDroppable({ col, cards, children }: { col: any, cards: any[], children: React.ReactNode }) {
-  const { setNodeRef } = useSortable({
-    id: col.id,
-    data: { type: "Column", status: col.id },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="kanban-cards-area"
-      style={{
-        borderRadius: "10px",
-        minHeight: "80px",
-        padding: "4px",
-        transition: "background 0.2s ease",
-      }}
-    >
-      {children}
     </div>
   );
 }

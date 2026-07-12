@@ -2,30 +2,7 @@
 
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/utils";
-import { useState, useEffect, useMemo } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragOverEvent,
-  DragEndEvent,
-  defaultDropAnimationSideEffects,
-  DropAnimation,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-
+import { useState, useEffect } from "react";
 import type { RequestStatus } from "@prisma/client";
 import {
   createMaintenanceRequest,
@@ -42,22 +19,14 @@ import {
   FileSpreadsheet,
   Plus,
   X,
-  Clock,
-  AlertTriangle,
-  AlertCircle,
-  ShieldAlert,
-  User,
-  Calendar,
-  ChevronRight,
 } from "lucide-react";
+import { COLUMNS, KanbanCard, priorityConfig } from "./components/kanban-components";
 
 interface Props {
   assets: any[];
   initialRequests: any[];
   isManager: boolean;
 }
-
-import { COLUMNS, KanbanCard, SortableCard, KanbanColumnDroppable, priorityConfig } from "./components/kanban-components";
 
 export default function MaintenanceClient({ assets, initialRequests, isManager }: Props) {
   const [requests, setRequests] = useState(initialRequests);
@@ -66,6 +35,16 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
+
+  // Custom Pointer-Capture Drag-and-Drop States
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [draggedWidth, setDraggedWidth] = useState(0);
+  const [hoveredColumnId, setHoveredColumnId] = useState<string | null>(null);
+
+  const [pendingDragId, setPendingDragId] = useState<string | null>(null);
+  const [dragStartCoords, setDragStartCoords] = useState({ x: 0, y: 0 });
 
   const moveCard = async (requestId: string, currentStatus: string, direction: "prev" | "next") => {
     const currentIndex = COLUMNS.findIndex(col => col.id === currentStatus);
@@ -116,26 +95,8 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
     setTicketPhotos(details.photos || []);
     setTicketHistory(details.history || []);
   };
-  const [selectedRequestForTech, setSelectedRequestForTech] = useState<any | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
   
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeTaskNode, setActiveTaskNode] = useState<any | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [selectedRequestForTech, setSelectedRequestForTech] = useState<any | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -164,75 +125,91 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
       toast.error(result.error);
       window.location.reload(); // Rollback on failure
     }
-    // Optimistic UI updates handle the success state, no need to reload
   };
 
-  const onDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    const node = requests.find((r) => r.id === event.active.id);
-    setActiveTaskNode(node || null);
+  // Custom Drag-and-Drop Handlers
+  const startDrag = (e: React.PointerEvent, req: any) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a") || target.closest("select") || target.closest("input")) {
+      return;
+    }
+
+    const cardElement = e.currentTarget as HTMLElement;
+    const rect = cardElement.getBoundingClientRect();
+
+    setPendingDragId(req.id);
+    setDragStartCoords({ x: e.clientX, y: e.clientY });
+    setOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+    setMousePos({
+      x: e.clientX,
+      y: e.clientY,
+    });
+    setDraggedWidth(rect.width);
+    setHoveredColumnId(req.status);
   };
 
-  const onDragOver = (event: DragOverEvent) => {
-    // Do nothing during dragging so the original card stays in its source column!
-  };
-
-  const onDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    setActiveTaskNode(null);
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    const activeTask = requests.find((r) => r.id === activeId);
-    if (!activeTask) return;
-
-    const isOverCard = over.data.current?.type === "Card";
-    const isOverColumn = over.data.current?.type === "Column";
-
-    let newStatus = activeTask.status;
-
-    if (isOverCard) {
-      const overTask = requests.find((r) => r.id === overId);
-      if (overTask) {
-        newStatus = overTask.status;
+  const handlePointerMove = (e: React.PointerEvent, req: any) => {
+    if (pendingDragId === req.id && !draggingId) {
+      const dx = e.clientX - dragStartCoords.x;
+      const dy = e.clientY - dragStartCoords.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > 4) {
+        setDraggingId(pendingDragId);
+        try {
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch (err) {}
       }
-    } else if (isOverColumn) {
-      newStatus = overId as string;
     }
 
-    if (newStatus !== activeTask.status) {
-      // Move to a different column
-      setRequests((prevRequests) => {
-        const activeIndex = prevRequests.findIndex((t) => t.id === activeId);
-        const newRequests = [...prevRequests];
-        newRequests[activeIndex] = { ...newRequests[activeIndex], status: newStatus };
-        const overIndex = prevRequests.findIndex((t) => t.id === overId);
-        if (overIndex !== -1) {
-          return arrayMove(newRequests, activeIndex, overIndex);
-        }
-        return newRequests;
+    if (draggingId === req.id) {
+      setMousePos({
+        x: e.clientX,
+        y: e.clientY,
       });
 
-      handleStatusChange(activeId as string, newStatus);
-    } else if (isOverCard && activeId !== overId) {
-      // Reorder within the same column
-      setRequests((prevRequests) => {
-        const activeIndex = prevRequests.findIndex((t) => t.id === activeId);
-        const overIndex = prevRequests.findIndex((t) => t.id === overId);
-        return arrayMove(prevRequests, activeIndex, overIndex);
-      });
+      const element = document.elementFromPoint(e.clientX, e.clientY);
+      const columnEl = element?.closest("[data-column-id]");
+      const colId = columnEl?.getAttribute("data-column-id");
+      
+      setHoveredColumnId(colId || null);
     }
   };
 
-  // activeTaskNode used for DragOverlay to prevent flickering during status updates
+  const handlePointerUp = (e: React.PointerEvent, req: any) => {
+    if (draggingId === req.id) {
+      const cardElement = e.currentTarget as HTMLElement;
+      try {
+        cardElement.releasePointerCapture(e.pointerId);
+      } catch (err) {}
 
-  const dropAnimation: DropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({
-      styles: { active: { opacity: "0.4" } },
-    }),
+      const targetColumn = hoveredColumnId;
+      const cardId = req.id;
+
+      setDraggingId(null);
+      setPendingDragId(null);
+      setHoveredColumnId(null);
+
+      const activeTask = requests.find(r => r.id === cardId);
+      if (targetColumn && activeTask && targetColumn !== activeTask.status) {
+        // Optimistic UI update
+        setRequests(prev => prev.map(item => {
+          if (item.id === cardId) {
+            return { ...item, status: targetColumn };
+          }
+          return item;
+        }));
+
+        handleStatusChange(cardId, targetColumn);
+      }
+    } else if (pendingDragId === req.id) {
+      // Just a click! Open details drawer
+      setSelectedCard(req);
+      setPendingDragId(null);
+      setHoveredColumnId(null);
+    }
   };
 
   const exportCSV = () => {
@@ -292,68 +269,94 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
 
       {/* Kanban Board */}
       <div className="animate-fade-up delay-100">
-        {isMounted ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={onDragStart}
-            onDragOver={onDragOver}
-            onDragEnd={onDragEnd}
-          >
-            <div className="kanban-board">
-              {COLUMNS.map((col) => {
-                const cards = getCardsByStatus(col.id);
-                return (
-                  <div key={col.id} className="kanban-column">
-                    <div className="kanban-column-header" style={{ borderTop: `3px solid ${col.color}` }}>
-                      <div className="kanban-column-dot" style={{ background: col.color }} />
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827" }}>
-                        {col.label}
-                      </span>
-                      <span className="kanban-count">{cards.length}</span>
-                    </div>
+        <div className="kanban-board">
+          {COLUMNS.map((col) => {
+            const cards = getCardsByStatus(col.id);
+            return (
+              <div key={col.id} className="kanban-column" data-column-id={col.id}>
+                <div className="kanban-column-header" style={{ borderTop: `3px solid ${col.color}` }}>
+                  <div className="kanban-column-dot" style={{ background: col.color }} />
+                  <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827" }}>
+                    {col.label}
+                  </span>
+                  <span className="kanban-count">{cards.length}</span>
+                </div>
 
-                    <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
-                      <KanbanColumnDroppable col={col} cards={cards}>
-                        {cards.length === 0 && (
-                          <div style={{
-                            padding: "20px", textAlign: "center", color: "#d1d5db",
-                            fontSize: "0.775rem", border: "1.5px dashed #f0f0f0",
-                            borderRadius: "10px", marginTop: "4px",
-                          }}>
-                            No tickets
-                          </div>
-                        )}
-                        {cards.map((req) => (
-                          <SortableCard
-                            key={req.id}
-                            req={req}
-                            onClick={() => setSelectedCard(req)}
-                            onMovePrev={() => moveCard(req.id, req.status, "prev")}
-                            onMoveNext={() => moveCard(req.id, req.status, "next")}
-                          />
-                        ))}
-                      </KanbanColumnDroppable>
-                    </SortableContext>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <DragOverlay dropAnimation={dropAnimation}>
-              {activeId && activeTaskNode ? (
-                <KanbanCard req={activeTaskNode} isOverlay style={{ cursor: "grabbing" }} />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          <div className="kanban-board">
-            <div style={{ padding: "40px", textAlign: "center", width: "100%", color: "#9ca3af" }}>
-              Loading board...
-            </div>
-          </div>
-        )}
+                <div
+                  className="kanban-cards-area"
+                  style={{
+                    borderRadius: "10px",
+                    minHeight: "150px",
+                    padding: "8px",
+                    background: hoveredColumnId === col.id ? "#fafafa" : "#f7f8f8",
+                    border: hoveredColumnId === col.id ? "1.5px dashed #53ba8d" : "1.5px solid transparent",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {cards.length === 0 && (
+                    <div style={{
+                      padding: "20px", textAlign: "center", color: "#d1d5db",
+                      fontSize: "0.775rem", border: "1.5px dashed #f0f0f0",
+                      borderRadius: "10px", marginTop: "4px",
+                    }}>
+                      No tickets
+                    </div>
+                  )}
+                  {cards.map((req) => {
+                    const isBeingDragged = draggingId === req.id;
+                    return (
+                      <div
+                        key={req.id}
+                        onPointerDown={(e) => startDrag(e, req)}
+                        onPointerMove={(e) => handlePointerMove(e, req)}
+                        onPointerUp={(e) => handlePointerUp(e, req)}
+                        style={{ touchAction: "none" }}
+                      >
+                        <KanbanCard
+                          req={req}
+                          style={{
+                            opacity: isBeingDragged ? 0.45 : 1,
+                            cursor: draggingId ? "grabbing" : "grab",
+                            userSelect: "none",
+                          }}
+                          onClick={() => {
+                            if (!draggingId) setSelectedCard(req);
+                          }}
+                          onMovePrev={() => moveCard(req.id, req.status, "prev")}
+                          onMoveNext={() => moveCard(req.id, req.status, "next")}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Custom Drag Overlay rendered outside of columns */}
+      {draggingId && (
+        (() => {
+          const draggingCard = requests.find(r => r.id === draggingId);
+          if (!draggingCard) return null;
+          return (
+            <div style={{
+              position: "fixed",
+              left: mousePos.x - offset.x,
+              top: mousePos.y - offset.y,
+              width: draggedWidth,
+              zIndex: 9999,
+              pointerEvents: "none",
+              transform: "rotate(2.5deg) scale(1.02)",
+              boxShadow: "0 22px 50px rgba(0,0,0,0.18)",
+              borderRadius: "10px",
+            }}>
+              <KanbanCard req={draggingCard} isDragging={true} />
+            </div>
+          );
+        })()
+      )}
 
       {/* ── CARD DETAIL SHEET ── */}
       {selectedCard && (
@@ -375,7 +378,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
               <button onClick={() => setSelectedCard(null)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px" }}><X size={18} /></button>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px", display: "flex", flexDirection: "column", gap: "20px" }} className="custom-scrollbar">
               <div style={{ display: "flex", gap: "8px" }}>
                 {(() => {
                   const pConfig = priorityConfig[selectedCard.priority] || priorityConfig.LOW;

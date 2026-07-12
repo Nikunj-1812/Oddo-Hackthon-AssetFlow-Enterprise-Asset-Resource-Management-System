@@ -87,6 +87,20 @@ export default function Home() {
 
       {/* ── 2. SAAS HERO SECTION ── */}
       <section className="relative pt-44 pb-20 overflow-hidden bg-white border-b border-[#E5E7EB]">
+        {/* Decorative Grid Pattern */}
+        <div 
+          className="absolute inset-0 pointer-events-none" 
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(83, 186, 141, 0.28) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(83, 186, 141, 0.28) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px",
+            maskImage: "radial-gradient(circle at center, black, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(circle at center, black, transparent 80%)",
+            opacity: 1,
+          }}
+        />
         <div className="max-w-4xl mx-auto px-6 flex flex-col items-center text-center relative z-10">
           
           {/* Accent badge */}
@@ -253,6 +267,20 @@ export default function Home() {
 
       {/* ── 5. SIMPLE CTA SECTION ── */}
       <section className="py-24 relative overflow-hidden bg-[#FAFAFA] border-t border-[#E5E7EB]">
+        {/* Decorative Grid Pattern */}
+        <div 
+          className="absolute inset-0 pointer-events-none" 
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(83, 186, 141, 0.24) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(83, 186, 141, 0.24) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px",
+            maskImage: "radial-gradient(circle at center, black, transparent 85%)",
+            WebkitMaskImage: "radial-gradient(circle at center, black, transparent 85%)",
+            opacity: 1,
+          }}
+        />
         <div className="max-w-4xl mx-auto px-6 text-center relative z-10 space-y-6">
           <FadeIn>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight text-[#111827]">

@@ -749,6 +749,7 @@
 .kanban-card-dragging {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
   border-color: #6ecfa3 !important;
+  transition: none !important;
 }
 
 /* ============================================================
