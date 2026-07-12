@@ -17,7 +17,6 @@ import {
   Eye, ShieldCheck, ShieldAlert, ShieldX, TrendingDown, Building2,
   FileText, Image as ImageIcon, Archive
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 // ── FORM FIELD COMPONENT (must be outside component to avoid re-creation on render) ──
