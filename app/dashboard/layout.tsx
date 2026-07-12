@@ -14,14 +14,17 @@ import {
   Activity,
   FileBarChart,
   Zap,
-  ChevronLeft,
-  ChevronRight,
+  Search,
+  ArrowRightLeft,
+  Bell,
+  Scan,
 } from "lucide-react";
 
 interface SidebarLink {
   href: string;
   label: string;
   icon: React.ComponentType<any>;
+  iconName: string;
   roles: string[];
   section?: string;
 }
@@ -31,6 +34,15 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+    iconName: "LayoutDashboard",
+    roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+    section: "Overview",
+  },
+  {
+    href: "/dashboard/notifications",
+    label: "Notification Center",
+    icon: Bell,
+    iconName: "Bell",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Overview",
   },
@@ -38,6 +50,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/assets",
     label: "Asset Directory",
     icon: Boxes,
+    iconName: "Boxes",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Operations",
   },
@@ -45,6 +58,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/bookings",
     label: "Resource Bookings",
     icon: CalendarDays,
+    iconName: "CalendarDays",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Operations",
   },
@@ -52,6 +66,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/maintenance",
     label: "Maintenance",
     icon: Wrench,
+    iconName: "Wrench",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Operations",
   },
@@ -59,6 +74,23 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/allocations",
     label: "Allocations",
     icon: ClipboardCheck,
+    iconName: "ClipboardCheck",
+    roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+    section: "Operations",
+  },
+  {
+    href: "/dashboard/transfers",
+    label: "Transfer Requests",
+    icon: ArrowRightLeft,
+    iconName: "ArrowRightLeft",
+    roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
+    section: "Operations",
+  },
+  {
+    href: "/dashboard/scanner",
+    label: "QR Scanner",
+    icon: Scan,
+    iconName: "Scan",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Operations",
   },
@@ -66,6 +98,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/audits",
     label: "Audit Cycles",
     icon: ClipboardCheck,
+    iconName: "ClipboardCheck",
     roles: ["ADMIN", "ASSET_MANAGER"],
     section: "Management",
   },
@@ -73,6 +106,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/reports",
     label: "Reports & Analytics",
     icon: FileBarChart,
+    iconName: "FileBarChart",
     roles: ["ADMIN", "ASSET_MANAGER"],
     section: "Management",
   },
@@ -80,6 +114,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/organization",
     label: "Organization",
     icon: Building2,
+    iconName: "Building2",
     roles: ["ADMIN", "ASSET_MANAGER"],
     section: "Management",
   },
@@ -87,6 +122,7 @@ const sidebarLinks: SidebarLink[] = [
     href: "/dashboard/activity-logs",
     label: "Activity Logs",
     icon: Activity,
+    iconName: "Activity",
     roles: ["ADMIN"],
     section: "Management",
   },
@@ -105,7 +141,6 @@ export default async function DashboardLayout({
 
   const userRole = (session.user as any).role || "EMPLOYEE";
   const userName = session.user.name || "User";
-  const userEmail = session.user.email || "";
 
   const filteredLinks = sidebarLinks.filter((link) =>
     link.roles.includes(userRole)
@@ -121,41 +156,41 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f8f9fa" }}>
-
+    <div className="flex min-h-screen bg-[#FAFAFA] font-sans text-[#111827]">
       {/* ── SIDEBAR ── */}
-      <aside className="erp-sidebar" id="erp-sidebar">
-
+      <aside className="w-64 border-r border-[#E5E7EB] bg-white flex flex-col fixed inset-y-0 z-20">
         {/* Logo */}
-        <Link href="/dashboard" className="erp-sidebar-logo">
-          <div className="erp-sidebar-logo-mark">
-            <Zap size={17} fill="#1a4a2e" color="#1a4a2e" />
+        <Link href="/dashboard" className="h-16 flex items-center gap-2 px-6 border-b border-[#E5E7EB] hover:bg-[#FAFAFA] transition-colors">
+          <div className="w-8 h-8 rounded-lg bg-[#92E4BA] flex items-center justify-center shadow-sm">
+            <Zap size={18} className="text-[#111827] fill-[#111827]" />
           </div>
-          <span className="erp-sidebar-logo-text">AssetFlow ERP</span>
+          <span className="font-bold text-lg tracking-tight text-[#111827]">AssetFlow</span>
         </Link>
 
         {/* Navigation */}
-        <SidebarNavClient
-          links={filteredLinks.map((l) => ({
-            href: l.href,
-            label: l.label,
-            iconName: l.icon.name || "",
-            section: l.section,
-          }))}
-          sections={sections as string[]}
-        />
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6 custom-scrollbar">
+          <SidebarNavClient
+            links={filteredLinks.map((l) => ({
+              href: l.href,
+              label: l.label,
+              iconName: l.iconName,
+              section: l.section,
+            }))}
+            sections={sections as string[]}
+          />
+        </div>
 
         {/* Footer */}
-        <div className="erp-sidebar-footer">
-          <div className="erp-user-card">
-            <div className="erp-user-avatar">
+        <div className="border-t border-[#E5E7EB] p-4 bg-[#FAFAFA]/50">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#92E4BA] to-[#3b82f6] flex items-center justify-center text-black font-bold text-sm shadow-sm">
               {userName.charAt(0).toUpperCase()}
             </div>
-            <div className="erp-user-info">
-              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-bold text-[#111827] truncate">
                 {userName}
               </span>
-              <span style={{ fontSize: "0.68rem", color: "#6b7280", fontWeight: 600 }}>
+              <span className="text-xs text-[#6B7280] font-medium truncate">
                 {roleLabel[userRole] || userRole}
               </span>
             </div>
@@ -169,55 +204,39 @@ export default async function DashboardLayout({
           >
             <button
               type="submit"
-              className="erp-collapse-btn"
-              style={{ color: "#ef4444", borderColor: "#fee2e2" }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
-              <LogOut size={13} />
-              <span className="erp-nav-link-label">Sign Out</span>
+              <LogOut size={16} />
+              Sign Out
             </button>
           </form>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
-
+      {/* ── MAIN CONTENT ── */}
+      <div className="flex-1 flex flex-col min-w-0 ml-64">
         {/* Top Bar */}
-        <header className="erp-topbar">
-          <div className="erp-search-bar">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
+        <header className="h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm shadow-black/5">
+          <div className="flex items-center w-full max-w-md relative group">
+            <Search size={16} className="absolute left-3 text-[#9CA3AF] group-focus-within:text-[#92E4BA] transition-colors" />
             <input
               type="text"
               placeholder="Search assets, staff, bookings..."
-              id="global-search"
+              className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-lg pl-10 pr-12 py-2 text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all shadow-sm"
               readOnly
-              style={{ cursor: "text" }}
             />
-            <span style={{ fontSize: "0.65rem", color: "#c4c9d0", background: "#f0f0f0", padding: "2px 6px", borderRadius: "5px", whiteSpace: "nowrap", fontWeight: 600 }}>
-              ⌘K
-            </span>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+              <span className="text-[10px] font-bold text-[#6B7280] bg-white border border-[#E5E7EB] px-1.5 py-0.5 rounded shadow-sm">
+                ⌘K
+              </span>
+            </div>
           </div>
 
           <HeaderActions />
         </header>
 
         {/* Page content */}
-        <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto", overflowX: "hidden" }}>
-          <style>{`
-            .erp-nav-link.active {
-              background: #e8faf3;
-              color: #1a7a4e;
-              font-weight: 600;
-            }
-            .erp-nav-link.active::before {
-              opacity: 1;
-            }
-            .erp-nav-link.active .nav-icon {
-              color: #1a7a4e;
-            }
-          `}</style>
+        <main className="flex-1 p-8">
           {children}
         </main>
       </div>

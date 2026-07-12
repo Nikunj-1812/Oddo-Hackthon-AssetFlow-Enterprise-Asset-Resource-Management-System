@@ -40,30 +40,40 @@ export default function SidebarNavClient({ links, sections }: Props) {
   const pathname = usePathname();
 
   return (
-    <nav className="erp-sidebar-nav">
+    <nav className="space-y-6">
       {sections.map((section) => (
-        <div key={section}>
-          <div className="erp-nav-section-label">{section}</div>
-          {links
-            .filter((l) => l.section === section)
-            .map((link) => {
-              const Icon = iconMap[link.iconName] || Boxes;
-              const isActive =
-                pathname === link.href ||
-                (link.href !== "/dashboard" && pathname.startsWith(link.href));
+        <div key={section} className="space-y-1">
+          <div className="text-[10px] font-bold text-[#6B7280] uppercase tracking-wider mb-2 px-3">
+            {section}
+          </div>
+          <div className="space-y-0.5">
+            {links
+              .filter((l) => l.section === section)
+              .map((link) => {
+                const Icon = iconMap[link.iconName] || Boxes;
+                const isActive =
+                  pathname === link.href ||
+                  (link.href !== "/dashboard" && pathname.startsWith(link.href));
 
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`erp-nav-link ${isActive ? "active" : ""}`}
-                  id={`nav-${link.href.replace(/\//g, "-")}`}
-                >
-                  <Icon size={16} className="nav-icon" />
-                  <span className="erp-nav-link-label">{link.label}</span>
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
+                      isActive
+                        ? "bg-[#92E4BA]/15 text-[#1a4a2e]"
+                        : "text-[#6B7280] hover:bg-[#FAFAFA] hover:text-[#111827]"
+                    }`}
+                  >
+                    <Icon
+                      size={18}
+                      className={isActive ? "text-[#207a4a]" : "text-[#9CA3AF] group-hover:text-[#111827] transition-colors"}
+                    />
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+          </div>
         </div>
       ))}
     </nav>

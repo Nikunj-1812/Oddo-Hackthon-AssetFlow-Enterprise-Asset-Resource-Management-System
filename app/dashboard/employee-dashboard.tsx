@@ -6,6 +6,7 @@ import {
   TrendingUp, CheckCircle2, AlertCircle, Package
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
 
 interface Props {
   stats: {
@@ -28,16 +29,14 @@ const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA");
 const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
 export default function EmployeeDashboard({ stats, myAssets, myBookings, myRequests }: Props) {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
   const kpis = [
     {
       title: "My Assets",
       value: stats.myAssetsCount,
       icon: Boxes,
-      color: "#92E4BA",
-      bg: "#e8faf3",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
       href: "/dashboard/assets",
       data: generateTrend(stats.myAssetsCount),
     },
@@ -45,8 +44,9 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
       title: "Upcoming Bookings",
       value: stats.myBookingsCount,
       icon: Calendar,
-      color: "#6366f1",
-      bg: "#eff6ff",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      border: "border-indigo-100",
       href: "/dashboard/bookings",
       data: generateTrend(stats.myBookingsCount),
     },
@@ -54,8 +54,9 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
       title: "Active Requests",
       value: stats.myRequestsCount,
       icon: Wrench,
-      color: "#f59e0b",
-      bg: "#fffbeb",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
       href: "/dashboard/maintenance",
       data: generateTrend(stats.myRequestsCount),
     },
@@ -63,227 +64,174 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
       title: "Pending Returns",
       value: stats.upcomingReturnsCount,
       icon: Clock,
-      color: "#ef4444",
-      bg: "#fef2f2",
+      color: "text-red-600",
+      bg: "bg-red-50",
+      border: "border-red-100",
       href: "/dashboard/allocations",
       data: generateTrend(stats.upcomingReturnsCount),
     },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "28px", fontFamily: "'Inter', sans-serif" }}>
-
-      {/* Hero */}
-      <div className="animate-fade-up">
-        <p style={{ margin: 0, fontSize: "0.78rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-          Employee Portal
-        </p>
-        <h1 className="page-title" style={{ margin: "4px 0 0 0" }}>{greeting}</h1>
-        <p className="page-subtitle">Here's everything assigned to you right now</p>
-      </div>
-
-      {/* KPI Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+    <div className="space-y-8">
+      {/* ── KPI GRID ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <Link
+            <motion.div
               key={i}
-              href={kpi.href}
-              className={`kpi-card animate-fade-up delay-${i * 100}`}
-              style={{ textDecoration: "none" }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <Link
+                href={kpi.href}
+                className="block bg-white rounded-2xl p-5 border border-[#E5E7EB] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#D1D5DB] transition-all group relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${kpi.bg} ${kpi.color} ${kpi.border}`}>
+                    <Icon size={18} />
+                  </div>
+                </div>
                 <div>
-                  <p className="kpi-label">{kpi.title}</p>
-                  <p className="kpi-value" style={{ marginTop: "4px" }}>{kpi.value}</p>
+                  <h3 className="text-3xl font-bold text-[#111827]">{kpi.value}</h3>
+                  <p className="text-sm font-medium text-[#6B7280] mt-1">{kpi.title}</p>
                 </div>
-                <div className="kpi-icon-wrap" style={{ background: kpi.bg }}>
-                  <Icon size={19} color={kpi.color} />
+                {/* Fake mini sparkline */}
+                <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={kpi.data}>
+                      <defs>
+                        <linearGradient id={`gradE-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={kpi.title === "My Assets" ? "#10b981" : "#6366f1"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={kpi.title === "My Assets" ? "#10b981" : "#6366f1"} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="v" stroke="none" fill={`url(#gradE-${i})`} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-              <div style={{ height: "36px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={kpi.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id={`eg-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={kpi.color} stopOpacity={0.2} />
-                        <stop offset="100%" stopColor={kpi.color} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="v" stroke={kpi.color} strokeWidth={1.5} fill={`url(#eg-${i})`} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <span style={{ fontSize: "0.72rem", color: "#9ca3af" }}>Tap to view</span>
-                <ArrowRight size={11} color="#d1d5db" />
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* My Assets + Bookings */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
-
-        {/* My Assigned Assets */}
-        <div
-          className="animate-fade-up delay-200"
-          style={{ background: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "14px", padding: "22px" }}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* ── MY HARDWARE ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Boxes size={15} color="#92E4BA" />
-              <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>My Assets</h3>
+          <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FAFAFA]/50">
+            <div>
+              <h2 className="text-lg font-bold text-[#111827]">Assigned Hardware</h2>
+              <p className="text-sm text-[#6B7280]">Current active assignments</p>
             </div>
-            <Link href="/dashboard/assets" style={{ fontSize: "0.72rem", color: "#1a7a4e", fontWeight: 600, textDecoration: "none" }}>
-              View all →
-            </Link>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div className="p-0 overflow-x-auto flex-1">
             {myAssets.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-                <Package size={28} color="#e5e7eb" style={{ display: "block", margin: "0 auto 8px" }} />
-                No assets assigned to you
+              <div className="p-12 text-center text-[#6B7280]">
+                <Package size={32} className="mx-auto mb-3 opacity-20" />
+                <p>No assets currently assigned to you.</p>
               </div>
             ) : (
-              myAssets.slice(0, 4).map((alloc: any) => (
-                <div
-                  key={alloc.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "10px 12px",
-                    background: "#fafafa",
-                    borderRadius: "9px",
-                    border: "1px solid #f0f0f0",
-                  }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#e8faf3", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Boxes size={14} color="#1a7a4e" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.8rem", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {alloc.asset?.name}
-                    </div>
-                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "1px" }}>
-                      {alloc.asset?.tag}
-                    </div>
-                  </div>
-                  <span className="status-badge status-approved">Active</span>
-                </div>
-              ))
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white border-b border-[#E5E7EB] text-[#6B7280]">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Asset</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Assigned Date</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {myAssets.slice(0, 5).map((alloc) => {
+                    const isOverdue = alloc.expectedReturnDate && new Date(alloc.expectedReturnDate) < new Date();
+                    return (
+                      <tr key={alloc.id} className="hover:bg-[#FAFAFA] transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-[#111827] flex items-center gap-2">
+                            <Package size={14} className="text-[#9CA3AF]" />
+                            [{alloc.asset?.tag}] {alloc.asset?.name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-[#6B7280]">
+                          {fmtDate(alloc.createdAt)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isOverdue ? (
+                            <span className="px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-semibold flex items-center gap-1 w-max">
+                              <AlertCircle size={12} /> Overdue Return
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 bg-[#e8faf3] text-[#1a7a4e] border border-[#92E4BA]/30 rounded-full text-xs font-semibold flex items-center gap-1 w-max">
+                              <CheckCircle2 size={12} /> Active
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Upcoming Bookings */}
-        <div
-          className="animate-fade-up delay-300"
-          style={{ background: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "14px", padding: "22px" }}
+        {/* ── MY REQUESTS ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Calendar size={15} color="#6366f1" />
-              <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>Upcoming Bookings</h3>
+          <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FAFAFA]/50">
+            <div>
+              <h2 className="text-lg font-bold text-[#111827]">My Maintenance Requests</h2>
+              <p className="text-sm text-[#6B7280]">Recent tickets</p>
             </div>
-            <Link href="/dashboard/bookings" style={{ fontSize: "0.72rem", color: "#1a7a4e", fontWeight: 600, textDecoration: "none" }}>
-              Manage →
+            <Link href="/dashboard/maintenance" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+              Submit New <ArrowRight size={14} />
             </Link>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {myBookings.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-                <Calendar size={28} color="#e5e7eb" style={{ display: "block", margin: "0 auto 8px" }} />
-                No upcoming bookings
+          <div className="p-0 flex-1">
+            {myRequests.length === 0 ? (
+              <div className="p-12 text-center text-[#6B7280]">
+                <Wrench size={32} className="mx-auto mb-3 opacity-20" />
+                <p>You have no recent maintenance requests.</p>
               </div>
             ) : (
-              myBookings.slice(0, 4).map((booking: any) => (
-                <div
-                  key={booking.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "10px 12px",
-                    background: "#fafafa",
-                    borderRadius: "9px",
-                    border: "1px solid #f0f0f0",
-                  }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: "8px", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Calendar size={14} color="#6366f1" />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.8rem", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {booking.asset?.name}
+              <div className="divide-y divide-[#E5E7EB]">
+                {myRequests.map((req) => (
+                  <div key={req.id} className="p-4 hover:bg-[#FAFAFA] transition-colors flex items-center justify-between group">
+                    <div>
+                      <div className="font-semibold text-[#111827]">
+                        {req.asset?.name}
+                      </div>
+                      <div className="text-xs text-[#6B7280] mt-0.5 truncate max-w-[200px]">
+                        {req.issueDescription}
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "1px" }}>
-                      {fmtDate(booking.startTime)} — {fmtTime(booking.startTime)}
+                    <div className="flex items-center gap-3">
+                      <div className="text-xs text-[#9CA3AF]">{fmtDate(req.createdAt)}</div>
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        req.status === "PENDING" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                        req.status === "IN_PROGRESS" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                        "bg-green-50 text-green-600 border border-green-100"
+                      }`}>
+                        {req.status.replace("_", " ")}
+                      </span>
                     </div>
                   </div>
-                  <span className="status-badge status-upcoming">Soon</span>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Maintenance Requests */}
-      <div
-        className="animate-fade-up delay-400"
-        style={{ background: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "14px", padding: "22px" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Wrench size={15} color="#f59e0b" />
-            <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>My Maintenance Requests</h3>
-          </div>
-          <Link href="/dashboard/maintenance" style={{ fontSize: "0.72rem", color: "#1a7a4e", fontWeight: 600, textDecoration: "none" }}>
-            File new request →
-          </Link>
-        </div>
-        {myRequests.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-            <CheckCircle2 size={28} color="#e5e7eb" style={{ display: "block", margin: "0 auto 8px" }} />
-            No open maintenance requests
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "10px" }}>
-            {myRequests.slice(0, 4).map((req: any) => (
-              <div
-                key={req.id}
-                style={{
-                  padding: "12px 14px",
-                  background: "#fafafa",
-                  borderRadius: "10px",
-                  border: "1px solid #f0f0f0",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "#111827" }}>
-                    {req.asset?.name}
-                  </span>
-                  <span className={`status-badge priority-${req.priority?.toLowerCase()}`}>
-                    {req.priority}
-                  </span>
-                </div>
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 }}>
-                  {req.description?.slice(0, 80)}{req.description?.length > 80 ? "..." : ""}
-                </p>
-                <span className={`status-badge status-${req.status?.toLowerCase()}`}>
-                  {req.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        </motion.div>
       </div>
     </div>
   );

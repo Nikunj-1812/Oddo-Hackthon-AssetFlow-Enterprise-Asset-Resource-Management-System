@@ -23,6 +23,12 @@ export default async function AllocationsPage() {
     }),
     prisma.asset.findMany({
       orderBy: { tag: "asc" },
+      include: {
+        allocations: {
+          where: { status: "APPROVED", actualReturnDate: null },
+          include: { user: true, department: true }
+        }
+      }
     }),
     prisma.user.findMany({
       orderBy: { name: "asc" },
@@ -33,12 +39,12 @@ export default async function AllocationsPage() {
   ]);
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700, color: "#111827" }}>
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
           Asset Allocations
         </h1>
-        <p style={{ margin: "4px 0 0 0", fontSize: "0.875rem", color: "#6b7280" }}>
+        <p className="text-[#6B7280] mt-2">
           Assign assets, manage active handovers, monitor return dates, and record physical checks.
         </p>
       </div>

@@ -26,7 +26,14 @@ export async function registerAsset(formData: FormData) {
     const categoryId = formData.get("categoryId") as string;
     const serialNumber = formData.get("serialNumber") as string || null;
     const cost = Number(formData.get("cost")) || 0;
-    const acquisitionDate = new Date(formData.get("acquisitionDate") as string || Date.now());
+    
+    const acqDateStr = formData.get("acquisitionDate") as string;
+    const acquisitionDate = acqDateStr ? new Date(acqDateStr) : new Date();
+    
+    if (isNaN(acquisitionDate.getTime())) {
+      return { error: "Invalid acquisition date provided." };
+    }
+
     const location = formData.get("location") as string;
     const condition = formData.get("condition") as Condition || "NEW";
     const bookable = formData.get("bookable") === "true";
@@ -74,7 +81,8 @@ export async function registerAsset(formData: FormData) {
           condition,
           bookable,
           status: "AVAILABLE",
-        },
+          customFieldsData: formData.get("customFieldsData") ? JSON.parse(formData.get("customFieldsData") as string) : {}
+        } as any,
       });
     });
 
@@ -101,7 +109,14 @@ export async function updateAsset(assetId: string, formData: FormData) {
     const categoryId = formData.get("categoryId") as string;
     const serialNumber = formData.get("serialNumber") as string || null;
     const cost = Number(formData.get("cost")) || 0;
-    const acquisitionDate = new Date(formData.get("acquisitionDate") as string);
+    
+    const acqDateStr = formData.get("acquisitionDate") as string;
+    const acquisitionDate = acqDateStr ? new Date(acqDateStr) : new Date();
+    
+    if (isNaN(acquisitionDate.getTime())) {
+      return { error: "Invalid acquisition date provided." };
+    }
+
     const location = formData.get("location") as string;
     const condition = formData.get("condition") as Condition;
     const bookable = formData.get("bookable") === "true";
@@ -136,8 +151,9 @@ export async function updateAsset(assetId: string, formData: FormData) {
         location,
         condition,
         bookable,
-        status
-      }
+        status,
+        customFieldsData: formData.get("customFieldsData") ? JSON.parse(formData.get("customFieldsData") as string) : {}
+      } as any
     });
 
     await logActivity({

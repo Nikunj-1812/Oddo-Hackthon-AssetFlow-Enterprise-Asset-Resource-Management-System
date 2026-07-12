@@ -33,8 +33,29 @@ export async function createMaintenanceRequest(formData: FormData) {
         description,
         priority,
         status: "PENDING"
-      }
+      },
+      include: { asset: true }
     });
+
+    await createNotification(
+      user.id!,
+      "Maintenance Requested",
+      `You raised a maintenance request for asset ${request.asset.name} (${request.asset.tag}).`,
+      "MAINTENANCE",
+      "INFO"
+    );
+
+    // Notify Asset Managers
+    const managers = await prisma.user.findMany({ where: { role: { in: ["ASSET_MANAGER", "ADMIN"] }, status: "ACTIVE" } });
+    for (const mgr of managers) {
+      await createNotification(
+        mgr.id,
+        "New Maintenance Ticket Raised",
+        `A new maintenance ticket has been requested for ${request.asset.name} by ${user.name}.`,
+        "MAINTENANCE",
+        "INFO"
+      );
+    }
 
     await logActivity({
       userId: user.id!,
@@ -60,7 +81,8 @@ export async function updateMaintenanceStatus(
     const operator = await verifyUser();
 
     const request = await prisma.maintenanceRequest.findUnique({
-      where: { id: requestId }
+      where: { id: requestId },
+      include: { asset: true }
     });
 
     if (!request) return { error: "Request not found." };
@@ -77,7 +99,7 @@ export async function updateMaintenanceStatus(
       });
 
       // Update Asset Status based on transition
-      if (nextStatus === "APPROVED") {
+      if (nextStatus === "APPROVED" || nextStatus === "TECHNICIAN_ASSIGNED" || nextStatus === "IN_PROGRESS") {
         await tx.asset.update({
           where: { id: request.assetId },
           data: { status: "UNDER_MAINTENANCE" }
@@ -92,11 +114,32 @@ export async function updateMaintenanceStatus(
       return updatedRequest;
     });
 
+    // Detailed notifications based on status change
+    let priorityVal = "INFO";
+    let titleMsg = "Maintenance Ticket Updated";
+    let bodyMsg = `Your maintenance request status for ${request.asset.name} is now ${nextStatus}.`;
+
+    if (nextStatus === "APPROVED") {
+      titleMsg = "Maintenance Approved";
+      priorityVal = "SUCCESS";
+    } else if (nextStatus === "REJECTED") {
+      titleMsg = "Maintenance Rejected";
+      priorityVal = "CRITICAL";
+    } else if (nextStatus === "RESOLVED") {
+      titleMsg = "Maintenance Completed";
+      priorityVal = "SUCCESS";
+      bodyMsg = `The repair for asset ${request.asset.name} (${request.asset.tag}) has been marked as completed.`;
+    } else if (nextStatus === "TECHNICIAN_ASSIGNED") {
+      titleMsg = "Technician Assigned";
+      bodyMsg = `Technician ${technicianName} has been assigned to repair your asset ${request.asset.name}.`;
+    }
+
     await createNotification(
       request.userId,
-      "Maintenance Request Update",
-      `Ticket request status for your asset has been marked as ${nextStatus}.`,
-      "MAINTENANCE"
+      titleMsg,
+      bodyMsg,
+      "MAINTENANCE",
+      priorityVal
     );
 
     await logActivity({

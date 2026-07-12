@@ -41,6 +41,15 @@ export default function AuditsClient({ cycles, locations }: Props) {
     setSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    
+    const startDate = formData.get("startDate") as string;
+    const endDate = formData.get("endDate") as string;
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      setError("End Date cannot be earlier than Start Date.");
+      setSubmitting(false);
+      return;
+    }
+
     const result = await createAuditCycle(formData);
 
     if (result?.error) {
@@ -125,11 +134,9 @@ export default function AuditsClient({ cycles, locations }: Props) {
 
   return (
     <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", fontFamily: "'Inter', sans-serif" }} className="animate-fade-up">
-      {/* LEFT COLUMN: Create Cycle & Cycles list */}
-      <div style={{ flex: 1, minWidth: "320px", display: "flex", flexDirection: "column", gap: "20px" }}>
-        
-        {/* Create Card */}
-        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
+      {/* COLUMN 1: Create Cycle */}
+      <div style={{ flex: 1, minWidth: "320px", display: "flex", flexDirection: "column" }}>
+        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", height: "100%" }}>
           <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
             <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
               Initialize Audit Cycle
@@ -219,9 +226,11 @@ export default function AuditsClient({ cycles, locations }: Props) {
             </form>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Cycles list */}
-        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
+      {/* COLUMN 2: Cycles list */}
+      <div style={{ flex: 1, minWidth: "320px", display: "flex", flexDirection: "column" }}>
+        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", height: "100%" }}>
           <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
             <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
               Verification Cycles
