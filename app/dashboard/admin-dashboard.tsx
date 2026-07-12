@@ -4,9 +4,10 @@ import Link from "next/link";
 import {
   Boxes, Users, Building2, Tag, CalendarDays, ClipboardCheck,
   UserCheck, Wrench, TrendingUp, TrendingDown, ArrowRight,
-  BarChart3, Activity, Shield, Package
+  BarChart3, Activity, Shield, Package, Search, ArrowRightLeft
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
 
 interface Props {
   stats: {
@@ -18,6 +19,7 @@ interface Props {
     activeAuditsCount: number;
     pendingPromotionsCount: number;
     pendingMaintenanceCount: number;
+    pendingTransfersCount?: number;
   };
   recentActivity: any[];
 }
@@ -31,225 +33,172 @@ const generateTrend = (base: number, up: boolean) =>
   }));
 
 export default function AdminDashboard({ stats, recentActivity }: Props) {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
   const kpis = [
-    { title: "Total Assets", value: stats.totalAssets, icon: Boxes, color: "#92E4BA", bg: "#e8faf3", trend: "+8%", trendUp: true, href: "/dashboard/assets" },
-    { title: "Staff Members", value: stats.totalEmployees, icon: Users, color: "#6366f1", bg: "#eff6ff", trend: "+2", trendUp: true, href: "/dashboard/organization" },
-    { title: "Departments", value: stats.departmentsCount, icon: Building2, color: "#f59e0b", bg: "#fffbeb", trend: "Stable", trendUp: true, href: "/dashboard/organization" },
-    { title: "Asset Categories", value: stats.categoriesCount, icon: Tag, color: "#8b5cf6", bg: "#f5f3ff", trend: "+1", trendUp: true, href: "/dashboard/assets" },
-    { title: "Active Bookings", value: stats.activeBookingsCount, icon: CalendarDays, color: "#3b82f6", bg: "#dbeafe", trend: "+12%", trendUp: true, href: "/dashboard/bookings" },
-    { title: "Active Audits", value: stats.activeAuditsCount, icon: ClipboardCheck, color: "#10b981", bg: "#d1fae5", trend: "In Progress", trendUp: true, href: "/dashboard/audits" },
-    { title: "Pending Maintenance", value: stats.pendingMaintenanceCount, icon: Wrench, color: "#ef4444", bg: "#fee2e2", trend: "Needs attention", trendUp: false, href: "/dashboard/maintenance" },
-    { title: "Total Employees", value: stats.pendingPromotionsCount, icon: UserCheck, color: "#ec4899", bg: "#fdf2f8", trend: "Active users", trendUp: true, href: "/dashboard/organization" },
+    { title: "Total Assets", value: stats.totalAssets, icon: Boxes, color: "text-[#1a7a4e]", bg: "bg-[#e8faf3]", border: "border-[#92E4BA]/30", trend: "+8%", trendUp: true, href: "/dashboard/assets" },
+    { title: "Staff Members", value: stats.totalEmployees, icon: Users, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", trend: "+2", trendUp: true, href: "/dashboard/organization" },
+    { title: "Departments", value: stats.departmentsCount, icon: Building2, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", trend: "Stable", trendUp: true, href: "/dashboard/organization" },
+    { title: "Asset Categories", value: stats.categoriesCount, icon: Tag, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100", trend: "+1", trendUp: true, href: "/dashboard/assets" },
+    { title: "Active Bookings", value: stats.activeBookingsCount, icon: CalendarDays, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", trend: "+12%", trendUp: true, href: "/dashboard/bookings" },
+    { title: "Active Audits", value: stats.activeAuditsCount, icon: ClipboardCheck, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", trend: "In Progress", trendUp: true, href: "/dashboard/audits" },
+    { title: "Pending Transfers", value: stats.pendingTransfersCount || 0, icon: ArrowRightLeft, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100", trend: "Needs Approval", trendUp: false, href: "/dashboard/transfers" },
+    { title: "Pending Maintenance", value: stats.pendingMaintenanceCount, icon: Wrench, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", trend: "Needs attention", trendUp: false, href: "/dashboard/maintenance" },
   ];
 
   const quickLinks = [
-    { href: "/dashboard/assets", label: "Asset Directory", desc: "Manage all assets", icon: Boxes, color: "#92E4BA" },
-    { href: "/dashboard/organization", label: "Organization", desc: "Staff & departments", icon: Building2, color: "#6366f1" },
-    { href: "/dashboard/audits", label: "Audit Cycles", desc: "Compliance audits", icon: ClipboardCheck, color: "#10b981" },
-    { href: "/dashboard/reports", label: "Analytics", desc: "Reports & insights", icon: BarChart3, color: "#f59e0b" },
-    { href: "/dashboard/maintenance", label: "Maintenance", desc: "Repair queue", icon: Wrench, color: "#ef4444" },
-    { href: "/dashboard/activity-logs", label: "Activity Logs", desc: "Security audit trail", icon: Shield, color: "#8b5cf6" },
+    { href: "/dashboard/assets", label: "Asset Directory", desc: "Manage all assets", icon: Boxes, color: "text-[#92E4BA]" },
+    { href: "/dashboard/organization", label: "Organization", desc: "Staff & departments", icon: Building2, color: "text-indigo-400" },
+    { href: "/dashboard/audits", label: "Audit Cycles", desc: "Compliance audits", icon: ClipboardCheck, color: "text-emerald-400" },
+    { href: "/dashboard/transfers", label: "Transfers", desc: "Asset requests", icon: ArrowRightLeft, color: "text-cyan-400" },
+    { href: "/dashboard/maintenance", label: "Maintenance", desc: "Repair queue", icon: Wrench, color: "text-red-400" },
+    { href: "/dashboard/activity-logs", label: "Activity Logs", desc: "Security audit trail", icon: Shield, color: "text-purple-400" },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "28px", fontFamily: "'Inter', sans-serif" }}>
-
-      {/* ── HERO ── */}
-      <div className="animate-fade-up" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: "0.78rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Administrator Console
-          </p>
-          <h1 className="page-title" style={{ margin: "4px 0 0 0" }}>
-            {greeting}, Admin
-          </h1>
-          <p className="page-subtitle">
-            Complete system overview across all departments
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <Link
-            href="/dashboard/reports"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "7px",
-              padding: "9px 18px", background: "#92E4BA", color: "#1a4a2e",
-              borderRadius: "9px", border: "none", fontWeight: 700, fontSize: "0.825rem",
-              cursor: "pointer", textDecoration: "none",
-              boxShadow: "0 4px 12px rgba(146,228,186,0.35)",
-            }}
-          >
-            <BarChart3 size={14} /> View Reports
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-8">
 
       {/* ── KPI GRID ── */}
-      <div
-        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "14px" }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <Link
+            <motion.div
               key={i}
-              href={kpi.href}
-              className={`kpi-card animate-fade-up delay-${Math.min(i * 100, 500)}`}
-              style={{ textDecoration: "none" }}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <Link
+                href={kpi.href}
+                className="block bg-white rounded-2xl p-5 border border-[#E5E7EB] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#D1D5DB] transition-all group relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${kpi.bg} ${kpi.color} ${kpi.border}`}>
+                    <Icon size={18} />
+                  </div>
+                  <div className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${kpi.trendUp ? "text-green-600 bg-green-50" : "text-amber-600 bg-amber-50"}`}>
+                    {kpi.trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {kpi.trend}
+                  </div>
+                </div>
                 <div>
-                  <p className="kpi-label">{kpi.title}</p>
-                  <p className="kpi-value" style={{ marginTop: "4px" }}>{kpi.value}</p>
+                  <h3 className="text-3xl font-bold text-[#111827]">{kpi.value.toLocaleString()}</h3>
+                  <p className="text-sm font-medium text-[#6B7280] mt-1">{kpi.title}</p>
                 </div>
-                <div className="kpi-icon-wrap" style={{ background: kpi.bg }}>
-                  <Icon size={18} color={kpi.color} />
+                {/* Fake mini sparkline */}
+                <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={generateTrend(kpi.value, kpi.trendUp)}>
+                      <defs>
+                        <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={kpi.trendUp ? "#92E4BA" : "#f59e0b"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={kpi.trendUp ? "#92E4BA" : "#f59e0b"} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="v" stroke="none" fill={`url(#grad-${i})`} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
-              <div style={{ height: "32px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={generateTrend(kpi.value, kpi.trendUp)} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id={`ag-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={kpi.color} stopOpacity={0.2} />
-                        <stop offset="100%" stopColor={kpi.color} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="v" stroke={kpi.color} strokeWidth={1.5} fill={`url(#ag-${i})`} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                {kpi.trendUp
-                  ? <span className="kpi-trend-up"><TrendingUp size={9} /> {kpi.trend}</span>
-                  : <span className="kpi-trend-down"><TrendingDown size={9} /> {kpi.trend}</span>
-                }
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* ── QUICK LINKS + ACTIVITY ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "20px" }}>
-
-        {/* Quick Access */}
-        <div
-          className="animate-fade-up delay-200"
-          style={{ background: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "14px", padding: "22px" }}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* ── QUICK LINKS ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-1 bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Activity size={15} color="#92E4BA" />
-            <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>Quick Access</h3>
+          <div className="p-6 border-b border-[#E5E7EB] bg-[#FAFAFA]/50">
+            <h2 className="text-lg font-bold text-[#111827]">Quick Links</h2>
+            <p className="text-sm text-[#6B7280]">Direct access to key modules</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {quickLinks.map((link, i) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={i}
-                  href={link.href}
-                  style={{
-                    display: "flex", flexDirection: "column", gap: "8px",
-                    padding: "14px", background: "#fafafa",
-                    border: "1px solid #f0f0f0", borderRadius: "10px",
-                    textDecoration: "none", transition: "all 0.18s ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f0faf5"; (e.currentTarget as HTMLElement).style.borderColor = "#92E4BA"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#fafafa"; (e.currentTarget as HTMLElement).style.borderColor = "#f0f0f0"; }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: "8px", background: `${link.color}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon size={15} color={link.color} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827" }}>{link.label}</div>
-                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "1px" }}>{link.desc}</div>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="p-4 grid grid-cols-1 gap-2 flex-1">
+            {quickLinks.map((ql, idx) => (
+              <Link 
+                key={idx} 
+                href={ql.href}
+                className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#FAFAFA] transition-colors group"
+              >
+                <div className={`w-10 h-10 rounded-lg bg-[#111827] flex items-center justify-center ${ql.color} group-hover:scale-105 transition-transform`}>
+                  <ql.icon size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-[#111827] truncate">{ql.label}</h4>
+                  <p className="text-xs text-[#6B7280] truncate">{ql.desc}</p>
+                </div>
+                <ArrowRight size={16} className="text-[#9CA3AF] group-hover:text-[#111827] group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Recent Activity */}
-        <div
-          className="animate-fade-up delay-300"
-          style={{ background: "#ffffff", border: "1px solid #f0f0f0", borderRadius: "14px", padding: "22px" }}
+        {/* ── RECENT ACTIVITY ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="lg:col-span-2 bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Activity size={15} color="#6366f1" />
-              <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>Recent Activity</h3>
+          <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FAFAFA]/50">
+            <div>
+              <h2 className="text-lg font-bold text-[#111827]">System Activity</h2>
+              <p className="text-sm text-[#6B7280]">Global audit log preview</p>
             </div>
-            <Link href="/dashboard/activity-logs" style={{ fontSize: "0.72rem", color: "#1a7a4e", fontWeight: 600, textDecoration: "none" }}>View all →</Link>
+            <Link href="/dashboard/activity-logs" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+              View All <ArrowRight size={14} />
+            </Link>
           </div>
-
-          <div className="activity-timeline">
+          
+          <div className="p-0 overflow-x-auto flex-1">
             {recentActivity.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-                <Activity size={28} color="#e5e7eb" style={{ display: "block", margin: "0 auto 8px" }} />
-                No recent activity
+              <div className="p-12 text-center text-[#6B7280]">
+                <Activity size={32} className="mx-auto mb-3 opacity-20" />
+                <p>No recent activity recorded.</p>
               </div>
             ) : (
-              recentActivity.slice(0, 6).map((log: any, i) => (
-                <div key={log.id || i} className="activity-item">
-                  <div className="activity-dot" style={{ background: "#e8faf3" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#92E4BA" }} />
-                  </div>
-                  <div className="activity-content">
-                    <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#111827" }}>
-                      {log.action}
-                    </div>
-                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "2px" }}>
-                       {fmtDate(log.timestamp)} {fmtTime(log.timestamp)}
-                    </div>
-                  </div>
-                </div>
-              ))
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white border-b border-[#E5E7EB] text-[#6B7280]">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Timestamp</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Action</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">User ID</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {recentActivity.map((log) => (
+                    <tr key={log.id} className="hover:bg-[#FAFAFA] transition-colors group">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-[#111827] font-medium">{fmtDate(log.timestamp)}</div>
+                        <div className="text-xs text-[#9CA3AF] mt-0.5">{fmtTime(log.timestamp)}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-[#111827] flex items-center gap-2">
+                          {log.targetType === "Asset" ? <Package size={14} className="text-blue-500" /> : 
+                           log.targetType === "User" ? <Users size={14} className="text-indigo-500" /> :
+                           log.targetType === "Allocation" ? <ClipboardCheck size={14} className="text-green-500" /> :
+                           <Activity size={14} className="text-gray-400" />}
+                          {log.action}
+                        </div>
+                        <div className="text-xs text-[#6B7280] mt-1 font-mono bg-[#FAFAFA] border border-[#E5E7EB] rounded px-1.5 py-0.5 inline-block">
+                          Target: {log.targetType} #{log.targetId.substring(0,8)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-[#6B7280] font-mono text-xs">
+                        {log.userId}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* ── SYSTEM HEALTH BANNER ── */}
-      <div
-        className="animate-fade-up delay-400"
-        style={{
-          background: "linear-gradient(135deg, #1a4a2e 0%, #2d6a4a 100%)",
-          borderRadius: "14px",
-          padding: "22px 28px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <p style={{ margin: 0, fontSize: "0.72rem", color: "#92E4BA", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            System Health
-          </p>
-          <h3 style={{ margin: "4px 0 0 0", fontSize: "1.2rem", fontWeight: 800, color: "#ffffff" }}>
-            All Systems Operational
-          </h3>
-          <p style={{ margin: "4px 0 0 0", fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
-            Database connected · Auth active · {stats.totalAssets} assets tracked
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "24px" }}>
-          {[
-            { label: "Uptime", value: "99.9%" },
-            { label: "Active Users", value: stats.totalEmployees.toString() },
-            { label: "Departments", value: stats.departmentsCount.toString() },
-          ].map((item, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#92E4BA", letterSpacing: "-0.02em" }}>{item.value}</div>
-              <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.5)", fontWeight: 500, marginTop: "2px" }}>{item.label}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

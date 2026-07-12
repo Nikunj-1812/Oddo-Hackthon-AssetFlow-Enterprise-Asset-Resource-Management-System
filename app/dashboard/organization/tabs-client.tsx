@@ -308,6 +308,10 @@ export default function TabsClient({ departments, categories, employees }: Props
                 <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Warranty Period (Months)</label>
                 <input name="warrantyMonths" type="number" defaultValue="0" style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", outline: "none" }} />
               </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Custom Fields (comma-separated)</label>
+                <input name="customFields" placeholder="e.g. Voltage, Brand, Color, Material" style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", outline: "none" }} />
+              </div>
               {catError && <span style={{ color: "#ef4444", fontSize: "0.75rem" }}>{catError}</span>}
               {catSuccess && <span style={{ color: "#10b981", fontSize: "0.75rem" }}>Category added successfully!</span>}
               <button
@@ -547,6 +551,10 @@ export default function TabsClient({ departments, categories, employees }: Props
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Warranty Period (Months)</label>
                 <input name="warrantyMonths" type="number" defaultValue={selectedCat.customFieldsSchema?.warrantyMonths || 0} style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Custom Fields (comma-separated)</label>
+                <input name="customFields" defaultValue={selectedCat.customFieldsSchema?.fields ? selectedCat.customFieldsSchema.fields.join(", ") : ""} placeholder="e.g. Voltage, Brand, Color, Material" style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Operating Status</label>

@@ -4,13 +4,30 @@
 const fmtDate = (d: string | Date) =>
   new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD, always consistent
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "@hello-pangea/dnd";
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragOverEvent,
+  DragEndEvent,
+  defaultDropAnimationSideEffects,
+  DropAnimation,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 import {
   createMaintenanceRequest,
   updateMaintenanceStatus,
@@ -54,6 +71,104 @@ const priorityConfig: Record<string, { bg: string; color: string; icon: any }> =
   CRITICAL: { bg: "#fee2e2", color: "#991b1b", icon: ShieldAlert },
 };
 
+// --- Sortable Card Component ---
+function KanbanCard({ req, style, isDragging, isOverlay, ...props }: any) {
+  const pConfig = priorityConfig[req.priority] || priorityConfig.LOW;
+  const PIcon = pConfig.icon;
+
+  return (
+    <div
+      style={style}
+      className={`kanban-card ${isDragging || isOverlay ? "kanban-card-dragging" : ""}`}
+      {...props}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "20px", background: pConfig.bg, color: pConfig.color, fontSize: "0.68rem", fontWeight: 700 }}>
+          <PIcon size={10} />
+          {req.priority}
+        </span>
+        <ChevronRight size={13} color="#d1d5db" />
+      </div>
+      <div>
+        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827", marginBottom: "2px" }}>
+          {req.asset?.name}
+        </div>
+        <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontFamily: "monospace" }}>
+          {req.asset?.tag}
+        </div>
+      </div>
+      <p style={{ margin: 0, fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 }}>
+        {req.description?.slice(0, 80)}{req.description?.length > 80 ? "..." : ""}
+      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "8px", borderTop: "1px solid #f9fafb" }}>
+        {req.assignedTo && (
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.68rem", color: "#6366f1" }}>
+            <User size={10} />
+            {req.assignedTo}
+          </div>
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px", fontSize: "0.68rem", color: "#9ca3af" }}>
+          <Calendar size={10} />
+          {fmtDate(req.createdAt)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Sortable Card Wrapper Component ---
+function SortableCard({ req, onClick }: { req: any; onClick?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: req.id,
+    data: { type: "Card", request: req },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    cursor: isDragging ? "grabbing" : "grab",
+  };
+
+  return (
+    <KanbanCard
+      req={req}
+      ref={setNodeRef}
+      style={style}
+      isDragging={isDragging}
+      onClick={(e: any) => {
+        if (isDragging) return;
+        onClick?.();
+      }}
+      {...attributes}
+      {...listeners}
+    />
+  );
+}
+
+// --- Column Droppable Component ---
+function KanbanColumnDroppable({ col, cards, children }: { col: any, cards: any[], children: React.ReactNode }) {
+  const { setNodeRef } = useSortable({
+    id: col.id,
+    data: { type: "Column", status: col.id },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="kanban-cards-area"
+      style={{
+        borderRadius: "10px",
+        minHeight: "80px",
+        padding: "4px",
+        transition: "background 0.2s ease",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function MaintenanceClient({ assets, initialRequests, isManager }: Props) {
   const [requests, setRequests] = useState(initialRequests);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +178,20 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
   const [selectedRequestForTech, setSelectedRequestForTech] = useState<any | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeTaskNode, setActiveTaskNode] = useState<any | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -93,24 +222,83 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
     const result = await updateMaintenanceStatus(requestId, nextStatus, techName);
     if (result?.error) {
       alert(result.error);
-    } else {
-      window.location.reload();
+      window.location.reload(); // Rollback on failure
+    }
+    // Optimistic UI updates handle the success state, no need to reload
+  };
+
+  const onDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    const node = requests.find((r) => r.id === event.active.id);
+    setActiveTaskNode(node || null);
+  };
+
+  const onDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+    if (activeId === overId) return;
+
+    const isActiveCard = active.data.current?.type === "Card";
+    const isOverCard = over.data.current?.type === "Card";
+    const isOverColumn = over.data.current?.type === "Column";
+
+    if (!isActiveCard) return;
+
+    setRequests((tasks) => {
+      const activeIndex = tasks.findIndex((t) => t.id === activeId);
+      const overIndex = tasks.findIndex((t) => t.id === overId);
+
+      if (isOverCard) {
+        const activeTask = tasks[activeIndex];
+        const overTask = tasks[overIndex];
+
+        if (activeTask.status !== overTask.status) {
+           const newTasks = [...tasks];
+           newTasks[activeIndex] = { ...newTasks[activeIndex], status: overTask.status };
+           return arrayMove(newTasks, activeIndex, overIndex);
+        } else {
+           return arrayMove(tasks, activeIndex, overIndex);
+        }
+      }
+
+      if (isOverColumn) {
+        const newStatus = overId as string;
+        if (tasks[activeIndex].status !== newStatus) {
+           const newTasks = [...tasks];
+           newTasks[activeIndex] = { ...newTasks[activeIndex], status: newStatus };
+           return arrayMove(newTasks, activeIndex, newTasks.length);
+        }
+      }
+
+      return tasks;
+    });
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    setActiveTaskNode(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeTask = active.data.current?.request;
+    if (!activeTask) return;
+
+    const newStatus = requests.find(r => r.id === active.id)?.status;
+    
+    if (newStatus && activeTask.status !== newStatus) {
+       handleStatusChange(active.id as string, newStatus);
     }
   };
 
-  const onDragEnd = (result: DropResult) => {
-    const { destination, source, draggableId } = result;
-    if (!destination || destination.droppableId === source.droppableId) return;
+  // activeTaskNode used for DragOverlay to prevent flickering during status updates
 
-    const nextStatus = destination.droppableId as any;
-    const req = requests.find((r) => r.id === draggableId);
-    if (!req) return;
-
-    // Optimistically update
-    setRequests((prev) =>
-      prev.map((r) => (r.id === draggableId ? { ...r, status: nextStatus } : r))
-    );
-    handleStatusChange(draggableId, nextStatus);
+  const dropAnimation: DropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: { active: { opacity: "0.4" } },
+    }),
   };
 
   const exportCSV = () => {
@@ -130,8 +318,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
     document.body.removeChild(link);
   };
 
-  const getCardsByStatus = (status: string) =>
-    requests.filter((r) => r.status === status);
+  const getCardsByStatus = (status: string) => requests.filter((r) => r.status === status);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px", fontFamily: "'Inter', sans-serif" }}>
@@ -172,126 +359,57 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
       {/* Kanban Board */}
       <div className="animate-fade-up delay-100">
         {isMounted ? (
-          <DragDropContext onDragEnd={onDragEnd}>
-          <div className="kanban-board">
-            {COLUMNS.map((col) => {
-              const cards = getCardsByStatus(col.id);
-              return (
-                <div key={col.id} className="kanban-column">
-                  {/* Column Header */}
-                  <div className="kanban-column-header" style={{ borderTop: `3px solid ${col.color}` }}>
-                    <div className="kanban-column-dot" style={{ background: col.color }} />
-                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827" }}>
-                      {col.label}
-                    </span>
-                    <span className="kanban-count">{cards.length}</span>
-                  </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+          >
+            <div className="kanban-board">
+              {COLUMNS.map((col) => {
+                const cards = getCardsByStatus(col.id);
+                return (
+                  <div key={col.id} className="kanban-column">
+                    <div className="kanban-column-header" style={{ borderTop: `3px solid ${col.color}` }}>
+                      <div className="kanban-column-dot" style={{ background: col.color }} />
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827" }}>
+                        {col.label}
+                      </span>
+                      <span className="kanban-count">{cards.length}</span>
+                    </div>
 
-                  {/* Droppable area */}
-                  <Droppable droppableId={col.id}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="kanban-cards-area"
-                        style={{
-                          background: snapshot.isDraggingOver ? `${col.color}0a` : "transparent",
-                          borderRadius: "10px",
-                          minHeight: "80px",
-                          padding: "4px",
-                          transition: "background 0.2s ease",
-                        }}
-                      >
-                        {cards.length === 0 && !snapshot.isDraggingOver && (
+                    <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                      <KanbanColumnDroppable col={col} cards={cards}>
+                        {cards.length === 0 && (
                           <div style={{
-                            padding: "20px",
-                            textAlign: "center",
-                            color: "#d1d5db",
-                            fontSize: "0.775rem",
-                            border: "1.5px dashed #f0f0f0",
-                            borderRadius: "10px",
-                            marginTop: "4px",
+                            padding: "20px", textAlign: "center", color: "#d1d5db",
+                            fontSize: "0.775rem", border: "1.5px dashed #f0f0f0",
+                            borderRadius: "10px", marginTop: "4px",
                           }}>
                             No tickets
                           </div>
                         )}
-
-                        {cards.map((req, index) => {
-                          const pConfig = priorityConfig[req.priority] || priorityConfig.LOW;
-                          const PIcon = pConfig.icon;
-                          return (
-                            <Draggable key={req.id} draggableId={req.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`kanban-card ${snapshot.isDragging ? "kanban-card-dragging" : ""}`}
-                                  onClick={() => setSelectedCard(req)}
-                                >
-                                  {/* Priority badge */}
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                    <span
-                                      style={{
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        padding: "2px 8px",
-                                        borderRadius: "20px",
-                                        background: pConfig.bg,
-                                        color: pConfig.color,
-                                        fontSize: "0.68rem",
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      <PIcon size={10} />
-                                      {req.priority}
-                                    </span>
-                                    <ChevronRight size={13} color="#d1d5db" />
-                                  </div>
-
-                                  {/* Asset info */}
-                                  <div>
-                                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827", marginBottom: "2px" }}>
-                                      {req.asset?.name}
-                                    </div>
-                                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontFamily: "monospace" }}>
-                                      {req.asset?.tag}
-                                    </div>
-                                  </div>
-
-                                  {/* Description */}
-                                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 }}>
-                                    {req.description?.slice(0, 80)}{req.description?.length > 80 ? "..." : ""}
-                                  </p>
-
-                                  {/* Footer */}
-                                  <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "8px", borderTop: "1px solid #f9fafb" }}>
-                                    {req.assignedTo && (
-                                      <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.68rem", color: "#6366f1" }}>
-                                        <User size={10} />
-                                        {req.assignedTo}
-                                      </div>
-                                    )}
-                                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px", fontSize: "0.68rem", color: "#9ca3af" }}>
-                                      <Calendar size={10} />
-                                      {fmtDate(req.createdAt)}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
+                        {cards.map((req) => (
+                          <SortableCard
+                            key={req.id}
+                            req={req}
+                            onClick={() => setSelectedCard(req)}
+                          />
+                        ))}
+                      </KanbanColumnDroppable>
+                    </SortableContext>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <DragOverlay dropAnimation={dropAnimation}>
+              {activeId && activeTaskNode ? (
+                <KanbanCard req={activeTaskNode} isOverlay style={{ cursor: "grabbing" }} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <div className="kanban-board">
             <div style={{ padding: "40px", textAlign: "center", width: "100%", color: "#9ca3af" }}>
@@ -304,53 +422,24 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
       {/* ── CARD DETAIL SHEET ── */}
       {selectedCard && (
         <div
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.25)",
-            zIndex: 200,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 200, display: "flex", justifyContent: "flex-end" }}
           onClick={() => setSelectedCard(null)}
         >
           <div
             className="animate-slide-right"
-            style={{
-              width: "420px",
-              height: "100vh",
-              background: "#ffffff",
-              display: "flex",
-              flexDirection: "column",
-              borderLeft: "1px solid #f0f0f0",
-              boxShadow: "-20px 0 60px rgba(0,0,0,0.1)",
-            }}
+            style={{ width: "420px", height: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", borderLeft: "1px solid #f0f0f0", boxShadow: "-20px 0 60px rgba(0,0,0,0.1)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Sheet Header */}
             <div style={{ padding: "22px 24px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Maintenance Ticket
-                </div>
-                <h2 style={{ margin: "4px 0 0 0", fontSize: "1rem", fontWeight: 800, color: "#111827" }}>
-                  {selectedCard.asset?.name}
-                </h2>
-                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontFamily: "monospace", marginTop: "2px" }}>
-                  {selectedCard.asset?.tag}
-                </div>
+                <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Maintenance Ticket</div>
+                <h2 style={{ margin: "4px 0 0 0", fontSize: "1rem", fontWeight: 800, color: "#111827" }}>{selectedCard.asset?.name}</h2>
+                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontFamily: "monospace", marginTop: "2px" }}>{selectedCard.asset?.tag}</div>
               </div>
-              <button
-                onClick={() => setSelectedCard(null)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px" }}
-              >
-                <X size={18} />
-              </button>
+              <button onClick={() => setSelectedCard(null)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af", padding: "4px" }}><X size={18} /></button>
             </div>
 
-            {/* Sheet Content */}
             <div style={{ flex: 1, overflowY: "auto", padding: "22px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
-
-              {/* Priority & Status */}
               <div style={{ display: "flex", gap: "8px" }}>
                 {(() => {
                   const pConfig = priorityConfig[selectedCard.priority] || priorityConfig.LOW;
@@ -363,17 +452,11 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                 <span className="status-badge status-pending">{selectedCard.status}</span>
               </div>
 
-              {/* Description */}
               <div>
-                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>
-                  Problem Description
-                </div>
-                <p style={{ margin: 0, fontSize: "0.85rem", color: "#374151", lineHeight: 1.6, background: "#fafafa", padding: "12px 14px", borderRadius: "10px", border: "1px solid #f0f0f0" }}>
-                  {selectedCard.description}
-                </p>
+                <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Problem Description</div>
+                <p style={{ margin: 0, fontSize: "0.85rem", color: "#374151", lineHeight: 1.6, background: "#fafafa", padding: "12px 14px", borderRadius: "10px", border: "1px solid #f0f0f0" }}>{selectedCard.description}</p>
               </div>
 
-              {/* Metadata */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {[
                   { label: "Reported By", value: selectedCard.raisedBy?.name || "Staff" },
@@ -382,63 +465,29 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                   { label: "Technician", value: selectedCard.assignedTo || "Not assigned" },
                 ].map((item) => (
                   <div key={item.label}>
-                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>
-                      {item.label}
-                    </div>
+                    <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>{item.label}</div>
                     <div style={{ fontSize: "0.825rem", color: "#111827", fontWeight: 600 }}>{item.value}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Action Buttons */}
               {isManager && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Actions
-                  </div>
-
+                  <div style={{ fontSize: "0.72rem", color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Actions</div>
                   {selectedCard.status === "PENDING" && (
                     <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        onClick={() => { handleStatusChange(selectedCard.id, "REJECTED"); setSelectedCard(null); }}
-                        style={{ flex: 1, padding: "10px", border: "1px solid #fee2e2", background: "#fef2f2", color: "#dc2626", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                      >
-                        <XCircle size={14} /> Reject
-                      </button>
-                      <button
-                        onClick={() => { handleStatusChange(selectedCard.id, "APPROVED"); setSelectedCard(null); }}
-                        style={{ flex: 1, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                      >
-                        <CheckCircle2 size={14} /> Approve
-                      </button>
+                      <button onClick={() => { handleStatusChange(selectedCard.id, "REJECTED"); setSelectedCard(null); }} style={{ flex: 1, padding: "10px", border: "1px solid #fee2e2", background: "#fef2f2", color: "#dc2626", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><XCircle size={14} /> Reject</button>
+                      <button onClick={() => { handleStatusChange(selectedCard.id, "APPROVED"); setSelectedCard(null); }} style={{ flex: 1, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircle2 size={14} /> Approve</button>
                     </div>
                   )}
-
                   {selectedCard.status === "APPROVED" && (
-                    <button
-                      onClick={() => { setSelectedRequestForTech(selectedCard); setSelectedCard(null); }}
-                      style={{ padding: "10px", border: "none", background: "#6366f1", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                    >
-                      <UserPlus size={14} /> Assign Technician
-                    </button>
+                    <button onClick={() => { setSelectedRequestForTech(selectedCard); setSelectedCard(null); }} style={{ padding: "10px", border: "none", background: "#6366f1", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><UserPlus size={14} /> Assign Technician</button>
                   )}
-
                   {selectedCard.status === "TECHNICIAN_ASSIGNED" && (
-                    <button
-                      onClick={() => { handleStatusChange(selectedCard.id, "IN_PROGRESS"); setSelectedCard(null); }}
-                      style={{ padding: "10px", border: "none", background: "#f59e0b", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                    >
-                      <Play size={14} fill="#fff" /> Start Repair
-                    </button>
+                    <button onClick={() => { handleStatusChange(selectedCard.id, "IN_PROGRESS"); setSelectedCard(null); }} style={{ padding: "10px", border: "none", background: "#f59e0b", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><Play size={14} fill="#fff" /> Start Repair</button>
                   )}
-
                   {selectedCard.status === "IN_PROGRESS" && (
-                    <button
-                      onClick={() => { handleStatusChange(selectedCard.id, "RESOLVED"); setSelectedCard(null); }}
-                      style={{ padding: "10px", border: "none", background: "#10b981", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                    >
-                      <CheckCircle2 size={14} /> Mark Resolved
-                    </button>
+                    <button onClick={() => { handleStatusChange(selectedCard.id, "RESOLVED"); setSelectedCard(null); }} style={{ padding: "10px", border: "none", background: "#10b981", color: "#ffffff", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircle2 size={14} /> Mark Resolved</button>
                   )}
                 </div>
               )}
@@ -449,34 +498,21 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
 
       {/* ── REPORT ISSUE SHEET ── */}
       {showForm && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 200, display: "flex", justifyContent: "flex-end" }}
-          onClick={() => setShowForm(false)}
-        >
-          <div
-            className="animate-slide-right"
-            style={{ width: "400px", height: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", borderLeft: "1px solid #f0f0f0", boxShadow: "-20px 0 60px rgba(0,0,0,0.1)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 200, display: "flex", justifyContent: "flex-end" }} onClick={() => setShowForm(false)}>
+          <div className="animate-slide-right" style={{ width: "400px", height: "100vh", background: "#ffffff", display: "flex", flexDirection: "column", borderLeft: "1px solid #f0f0f0", boxShadow: "-20px 0 60px rgba(0,0,0,0.1)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ padding: "22px 24px", borderBottom: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#111827" }}>Report Asset Issue</h2>
-              <button onClick={() => setShowForm(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af" }}>
-                <X size={18} />
-              </button>
+              <button onClick={() => setShowForm(false)} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9ca3af" }}><X size={18} /></button>
             </div>
             <div style={{ flex: 1, padding: "22px 24px", overflowY: "auto" }}>
               <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Select Asset</label>
                   <select name="assetId" required style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", color: "#374151", background: "#fafafa", outline: "none", fontFamily: "inherit" }}>
                     <option value="">— Choose an asset —</option>
-                    {assets.map((a) => (
-                      <option key={a.id} value={a.id}>[{a.tag}] {a.name}</option>
-                    ))}
+                    {assets.map((a) => <option key={a.id} value={a.id}>[{a.tag}] {a.name}</option>)}
                   </select>
                 </div>
-
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Priority Level</label>
                   <select name="priority" required style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", color: "#374151", background: "#fafafa", outline: "none", fontFamily: "inherit" }}>
@@ -486,43 +522,15 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                     <option value="CRITICAL">Critical — Inoperable / Safety risk</option>
                   </select>
                 </div>
-
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Problem Description</label>
-                  <textarea
-                    name="description"
-                    required
-                    placeholder="Describe what components failed or what issue was observed..."
-                    style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", minHeight: "100px", fontFamily: "inherit", fontSize: "0.85rem", outline: "none", resize: "vertical", background: "#fafafa" }}
-                  />
+                  <textarea name="description" required placeholder="Describe what components failed or what issue was observed..." style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", minHeight: "100px", fontFamily: "inherit", fontSize: "0.85rem", outline: "none", resize: "vertical", background: "#fafafa" }} />
                 </div>
-
-                {error && (
-                  <div style={{ padding: "10px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "9px", fontSize: "0.8rem" }}>
-                    {error}
-                  </div>
-                )}
-                {success && (
-                  <div style={{ padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "9px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                    <CheckCircle2 size={14} /> Ticket filed successfully!
-                  </div>
-                )}
-
+                {error && <div style={{ padding: "10px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "9px", fontSize: "0.8rem" }}>{error}</div>}
+                {success && <div style={{ padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "9px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}><CheckCircle2 size={14} /> Ticket filed successfully!</div>}
                 <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    {submitting ? "Submitting..." : "Submit Report"}
-                  </button>
+                  <button type="button" onClick={() => setShowForm(false)} style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                  <button type="submit" disabled={submitting} style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>{submitting ? "Submitting..." : "Submit Report"}</button>
                 </div>
               </form>
             </div>
@@ -532,54 +540,18 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
 
       {/* ── ASSIGN TECH MODAL ── */}
       {selectedRequestForTech && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-          onClick={() => setSelectedRequestForTech(null)}
-        >
-          <div
-            className="animate-scale-in"
-            style={{ background: "#ffffff", borderRadius: "16px", width: "100%", maxWidth: "380px", padding: "28px", boxShadow: "0 32px 80px rgba(0,0,0,0.15)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 800, color: "#111827" }}>
-              Assign Technician
-            </h3>
-            <p style={{ margin: "0 0 20px 0", fontSize: "0.8rem", color: "#6b7280" }}>
-              Enter the name of the technician to handle this repair.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const techName = formData.get("technicianName") as string;
-                handleStatusChange(selectedRequestForTech.id, "TECHNICIAN_ASSIGNED", techName);
-                setSelectedRequestForTech(null);
-              }}
-              style={{ display: "flex", flexDirection: "column", gap: "14px" }}
-            >
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }} onClick={() => setSelectedRequestForTech(null)}>
+          <div className="animate-scale-in" style={{ background: "#ffffff", borderRadius: "16px", width: "100%", maxWidth: "380px", padding: "28px", boxShadow: "0 32px 80px rgba(0,0,0,0.15)" }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 4px 0", fontSize: "1rem", fontWeight: 800, color: "#111827" }}>Assign Technician</h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: "0.8rem", color: "#6b7280" }}>Enter the name of the technician to handle this repair.</p>
+            <form onSubmit={(e) => { e.preventDefault(); const formData = new FormData(e.currentTarget); const techName = formData.get("technicianName") as string; handleStatusChange(selectedRequestForTech.id, "TECHNICIAN_ASSIGNED", techName); setSelectedRequestForTech(null); }} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Technician Full Name</label>
-                <input
-                  name="technicianName"
-                  required
-                  placeholder="e.g. John Doe"
-                  style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", background: "#fafafa" }}
-                />
+                <input name="technicianName" required placeholder="e.g. John Doe" style={{ padding: "10px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", fontFamily: "inherit", outline: "none", background: "#fafafa" }} />
               </div>
               <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRequestForTech(null)}
-                  style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Confirm Assignment
-                </button>
+                <button type="button" onClick={() => setSelectedRequestForTech(null)} style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                <button type="submit" style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Confirm Assignment</button>
               </div>
             </form>
           </div>

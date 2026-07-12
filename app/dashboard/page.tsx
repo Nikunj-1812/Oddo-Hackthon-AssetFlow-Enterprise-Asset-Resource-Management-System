@@ -5,6 +5,8 @@ import AdminDashboard from "./admin-dashboard";
 import ManagerDashboard from "./manager-dashboard";
 import DepartmentHeadDashboard from "./head-dashboard";
 import EmployeeDashboard from "./employee-dashboard";
+import DashboardAlerts from "./components/dashboard-alerts";
+import { motion } from "framer-motion";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -28,6 +30,7 @@ export default async function DashboardPage() {
       activeAuditsCount,
       pendingPromotionsCount,
       pendingMaintenanceCount,
+      pendingTransfersCount,
       recentActivity,
     ] = await Promise.all([
       prisma.asset.count(),
@@ -38,6 +41,7 @@ export default async function DashboardPage() {
       prisma.auditCycle.count({ where: { status: "ACTIVE" } }),
       prisma.user.count({ where: { role: "EMPLOYEE" } }),
       prisma.maintenanceRequest.count({ where: { status: "PENDING" } }),
+      (prisma as any).transferRequest?.count({ where: { status: "DEPARTMENT_APPROVED" } }) || Promise.resolve(0),
       prisma.activityLog.findMany({
         take: 5,
         orderBy: { timestamp: "desc" },
@@ -45,15 +49,19 @@ export default async function DashboardPage() {
     ]);
 
     return (
-      <div style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>
-            Welcome back, {userName}!
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-[#9CA3AF] uppercase mb-1">
+            Administrator Console
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+            Welcome back, {userName}
           </h1>
-          <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
-            Administrator Operations Control Console
+          <p className="text-[#6B7280] mt-2">
+            Complete system overview across all departments
           </p>
         </div>
+        <DashboardAlerts />
         <AdminDashboard
           stats={{
             totalAssets,
@@ -64,6 +72,7 @@ export default async function DashboardPage() {
             activeAuditsCount,
             pendingPromotionsCount,
             pendingMaintenanceCount,
+            pendingTransfersCount,
           }}
           recentActivity={recentActivity}
         />
@@ -116,15 +125,19 @@ export default async function DashboardPage() {
     ]);
 
     return (
-      <div style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>
-            Welcome back, {userName}!
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-[#9CA3AF] uppercase mb-1">
+            Asset Manager Overview
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+            Welcome back, {userName}
           </h1>
-          <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
-            Asset Manager Overview Desk
+          <p className="text-[#6B7280] mt-2">
+            Manage asset lifecycles, monitor allocations, and approve maintenance requests.
           </p>
         </div>
+        <DashboardAlerts />
         <ManagerDashboard
           stats={{
             availableAssets,
@@ -158,6 +171,8 @@ export default async function DashboardPage() {
       activeRequestsCount,
       upcomingReturnsCount,
       bookingOverviewCount,
+      pendingTransfersCount,
+      recentActivity,
     ] = await Promise.all([
       prisma.asset.findMany({
         where: {
@@ -173,11 +188,8 @@ export default async function DashboardPage() {
         },
         include: { category: true },
       }),
-      prisma.maintenanceRequest.count({
-        where: {
-          status: "PENDING",
-          userId: { in: employeeIds },
-        },
+      prisma.maintenanceRequest.count({ 
+        where: { status: "PENDING", asset: { allocations: { some: { departmentId, actualReturnDate: null } } } } 
       }),
       prisma.allocation.count({
         where: {
@@ -198,20 +210,30 @@ export default async function DashboardPage() {
           userId: { in: employeeIds },
         },
       }),
+      (prisma as any).transferRequest?.count({ where: { status: "PENDING", requestedDepartmentId: departmentId } }) || Promise.resolve(0),
+      prisma.activityLog.findMany({
+        where: { targetType: { in: ["Department", "User", "Allocation"] } },
+        take: 5,
+        orderBy: { timestamp: "desc" }
+      }),
     ]);
 
     const totalAssetsCost = departmentAssets.reduce((sum, a) => sum + a.cost, 0);
 
     return (
-      <div style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>
-            Welcome back, {userName}!
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-[#9CA3AF] uppercase mb-1">
+            Department Head Portal
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+            Welcome back, {userName}
           </h1>
-          <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
-            Departmental Asset Manager Portal
+          <p className="text-[#6B7280] mt-2">
+            Overview of all hardware and resources currently assigned to your team.
           </p>
         </div>
+        <DashboardAlerts />
         <DepartmentHeadDashboard
           deptName={deptName}
           stats={{
@@ -238,6 +260,8 @@ export default async function DashboardPage() {
     myBookingsCount,
     myRequestsCount,
     upcomingReturnsCount,
+    pendingTransfersCount,
+    recentActivity,
   ] = await Promise.all([
     prisma.allocation.findMany({
       where: { userId, status: "APPROVED" },
@@ -265,18 +289,28 @@ export default async function DashboardPage() {
         expectedReturnDate: { not: null },
       },
     }),
+    (prisma as any).transferRequest?.count({ where: { requestedById: userId, status: { in: ["PENDING", "DEPARTMENT_APPROVED"] } } }) || Promise.resolve(0),
+    prisma.activityLog.findMany({
+      where: { userId },
+      take: 5,
+      orderBy: { timestamp: "desc" }
+    }),
   ]);
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>
-          Welcome back, {userName}!
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div>
+        <p className="text-xs font-bold tracking-widest text-[#9CA3AF] uppercase mb-1">
+          Employee Portal
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#111827]">
+          Welcome back, {userName}
         </h1>
-        <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
-          Unified Employee Portal Dashboard
+        <p className="text-[#6B7280] mt-2">
+          Your active hardware assignments, upcoming bookings, and IT requests.
         </p>
       </div>
+      <DashboardAlerts />
       <EmployeeDashboard
         stats={{
           myAssetsCount,

@@ -10,9 +10,14 @@ export default auth((req) => {
   }
 
   const isAuthPage = pathname === "/login" || pathname === "/signup";
-  const isDashboardPage = pathname.startsWith("/dashboard") || pathname === "/";
+  const isDashboardPage = pathname.startsWith("/dashboard");
+  const isServerAction = req.headers.has("Next-Action");
 
   if (isDashboardPage && !isLoggedIn) {
+    if (isServerAction) {
+      // Let the server action handle the auth failure natively instead of throwing an HTML redirect
+      return; 
+    }
     return Response.redirect(new URL("/login", req.nextUrl));
   }
 

@@ -68,8 +68,18 @@ export async function signupAction(formData: FormData) {
       }
     });
 
+    // Automatically sign the user in after they register
+    await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
     return { success: true };
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return { error: "Failed to automatically sign in." };
+    }
     console.error("Signup Action Error:", error);
     return { error: "Internal server error during registration." };
   }

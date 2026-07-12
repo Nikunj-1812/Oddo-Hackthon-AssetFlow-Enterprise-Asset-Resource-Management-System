@@ -7,6 +7,7 @@ import {
   Activity, Clock, Package
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
+import { motion } from "framer-motion";
 
 interface Props {
   stats: {
@@ -20,7 +21,8 @@ interface Props {
   nearRetirementList: any[];
 }
 
-// Sparkline data (synthetic trend data for visual)
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA");
+
 const generateTrend = (base: number, up: boolean) =>
   Array.from({ length: 7 }, (_, i) => ({
     v: Math.max(0, base + (up ? i : -i) * Math.ceil(base * 0.05) + Math.floor(Math.random() * 3)),
@@ -31,8 +33,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Available Stock",
     value: stats.availableAssets,
     icon: Boxes,
-    color: "#92E4BA",
-    bg: "#e8faf3",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    border: "border-emerald-100",
     trend: "+12%",
     trendUp: true,
     data: generateTrend(stats.availableAssets, true),
@@ -41,8 +44,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Allocated Assets",
     value: stats.allocatedAssets,
     icon: BadgeCheck,
-    color: "#6366f1",
-    bg: "#eff6ff",
+    color: "text-indigo-600",
+    bg: "bg-indigo-50",
+    border: "border-indigo-100",
     trend: "+5%",
     trendUp: true,
     data: generateTrend(stats.allocatedAssets, true),
@@ -51,8 +55,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Pending Handovers",
     value: stats.pendingTransfers,
     icon: RefreshCw,
-    color: "#f59e0b",
-    bg: "#fffbeb",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+    border: "border-amber-100",
     trend: "−3%",
     trendUp: false,
     data: generateTrend(stats.pendingTransfers, false),
@@ -61,8 +66,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Overdue Returns",
     value: stats.pendingReturns,
     icon: AlertTriangle,
-    color: "#ef4444",
-    bg: "#fef2f2",
+    color: "text-red-600",
+    bg: "bg-red-50",
+    border: "border-red-100",
     trend: "+8%",
     trendUp: false,
     data: generateTrend(stats.pendingReturns, false),
@@ -71,8 +77,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Active Maintenance",
     value: stats.pendingMaintenanceCount,
     icon: Wrench,
-    color: "#8b5cf6",
-    bg: "#f5f3ff",
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    border: "border-purple-100",
     trend: "−2%",
     trendUp: false,
     data: generateTrend(stats.pendingMaintenanceCount, false),
@@ -81,8 +88,9 @@ const kpiConfig = (stats: Props["stats"]) => [
     title: "Near Retirement",
     value: stats.assetsNearRetirementCount,
     icon: Trash2,
-    color: "#ec4899",
-    bg: "#fdf2f8",
+    color: "text-pink-600",
+    bg: "bg-pink-50",
+    border: "border-pink-100",
     trend: "+1",
     trendUp: false,
     data: generateTrend(stats.assetsNearRetirementCount, false),
@@ -90,309 +98,158 @@ const kpiConfig = (stats: Props["stats"]) => [
 ];
 
 const quickActions = [
-  { href: "/dashboard/assets", label: "Register New Asset", desc: "Add asset to inventory", icon: PlusCircle, color: "#92E4BA" },
-  { href: "/dashboard/allocations", label: "Allocate Asset", desc: "Assign to staff or dept", icon: BadgeCheck, color: "#6366f1" },
-  { href: "/dashboard/allocations", label: "Process Return", desc: "Mark asset as returned", icon: RefreshCw, color: "#f59e0b" },
-  { href: "/dashboard/maintenance", label: "Approve Maintenance", desc: "Review pending tickets", icon: Wrench, color: "#8b5cf6" },
+  { href: "/dashboard/assets", label: "Register New Asset", desc: "Add asset to inventory", icon: PlusCircle, color: "text-[#92E4BA]" },
+  { href: "/dashboard/allocations", label: "Allocate Asset", desc: "Assign to staff or dept", icon: BadgeCheck, color: "text-indigo-400" },
+  { href: "/dashboard/allocations", label: "Process Return", desc: "Mark asset as returned", icon: RefreshCw, color: "text-amber-400" },
+  { href: "/dashboard/maintenance", label: "Approve Maintenance", desc: "Review pending tickets", icon: Wrench, color: "text-purple-400" },
 ];
 
 export default function ManagerDashboard({ stats, nearRetirementList }: Props) {
   const kpis = kpiConfig(stats);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "28px", fontFamily: "'Inter', sans-serif" }}>
-
-      {/* ── HERO GREETING ── */}
-      <div className="animate-fade-up" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: "0.78rem", color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Asset Manager Portal
-          </p>
-          <h1 className="page-title" style={{ margin: "4px 0 0 0" }}>
-            {greeting}, Manager
-          </h1>
-          <p className="page-subtitle">
-            Here's your inventory overview for today
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Link
-            href="/dashboard/assets"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "7px",
-              padding: "9px 16px",
-              background: "#92E4BA",
-              color: "#1a4a2e",
-              borderRadius: "9px",
-              border: "none",
-              fontWeight: 700,
-              fontSize: "0.825rem",
-              cursor: "pointer",
-              textDecoration: "none",
-              transition: "all 0.18s ease",
-              boxShadow: "0 4px 12px rgba(146,228,186,0.3)",
-            }}
-          >
-            <PlusCircle size={14} />
-            New Asset
-          </Link>
-        </div>
-      </div>
-
+    <div className="space-y-8">
       {/* ── KPI GRID ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: "16px",
-        }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <div
+            <motion.div
               key={i}
-              className={`kpi-card animate-fade-up delay-${Math.min(i * 100, 500)}`}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div className="bg-white rounded-2xl p-5 border border-[#E5E7EB] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#D1D5DB] transition-all group relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${kpi.bg} ${kpi.color} ${kpi.border}`}>
+                    <Icon size={18} />
+                  </div>
+                  <div className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${kpi.trendUp ? "text-green-600 bg-green-50" : "text-amber-600 bg-amber-50"}`}>
+                    {kpi.trendUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {kpi.trend}
+                  </div>
+                </div>
                 <div>
-                  <p className="kpi-label">{kpi.title}</p>
-                  <p className="kpi-value" style={{ marginTop: "4px" }}>{kpi.value}</p>
+                  <h3 className="text-3xl font-bold text-[#111827]">{kpi.value.toLocaleString()}</h3>
+                  <p className="text-sm font-medium text-[#6B7280] mt-1">{kpi.title}</p>
                 </div>
-                <div className="kpi-icon-wrap" style={{ background: kpi.bg }}>
-                  <Icon size={19} color={kpi.color} />
+                {/* Fake mini sparkline */}
+                <div className="absolute bottom-0 left-0 right-0 h-10 opacity-30 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={kpi.data}>
+                      <defs>
+                        <linearGradient id={`gradM-${i}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={kpi.trendUp ? "#10b981" : "#f59e0b"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={kpi.trendUp ? "#10b981" : "#f59e0b"} stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="v" stroke="none" fill={`url(#gradM-${i})`} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-
-              {/* Sparkline */}
-              <div style={{ height: "40px", marginLeft: "-4px", marginRight: "-4px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={kpi.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={kpi.color} stopOpacity={0.25} />
-                        <stop offset="100%" stopColor={kpi.color} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Area
-                      type="monotone"
-                      dataKey="v"
-                      stroke={kpi.color}
-                      strokeWidth={1.5}
-                      fill={`url(#grad-${i})`}
-                      dot={false}
-                      activeDot={false}
-                    />
-                    <Tooltip
-                      contentStyle={{ display: "none" }}
-                      cursor={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div>
-                {kpi.trendUp ? (
-                  <span className="kpi-trend-up">
-                    <TrendingUp size={10} /> {kpi.trend} this week
-                  </span>
-                ) : (
-                  <span className="kpi-trend-down">
-                    <TrendingDown size={10} /> {kpi.trend} this week
-                  </span>
-                )}
-              </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* ── QUICK ACTIONS + RETIREMENT ALERTS ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "20px" }}>
-
-        {/* Quick Actions */}
-        <div
-          className="animate-fade-up delay-200"
-          style={{
-            background: "#ffffff",
-            border: "1px solid #f0f0f0",
-            borderRadius: "14px",
-            padding: "22px",
-          }}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* ── QUICK ACTIONS ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="lg:col-span-1 bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <Activity size={16} color="#92E4BA" />
-            <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
-              Quick Actions
-            </h3>
+          <div className="p-6 border-b border-[#E5E7EB] bg-[#FAFAFA]/50">
+            <h2 className="text-lg font-bold text-[#111827]">Quick Actions</h2>
+            <p className="text-sm text-[#6B7280]">Asset management shortcuts</p>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {quickActions.map((action, i) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={i}
-                  href={action.href}
-                  className="quick-action-card"
-                >
-                  <div className="quick-action-icon" style={{ background: `${action.color}18` }}>
-                    <Icon size={16} color={action.color} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: "#111827", fontSize: "0.825rem" }}>{action.label}</div>
-                    <div style={{ fontSize: "0.72rem", color: "#9ca3af", marginTop: "1px" }}>{action.desc}</div>
-                  </div>
-                  <ArrowRight size={13} color="#d1d5db" />
-                </Link>
-              );
-            })}
+          <div className="p-4 grid grid-cols-1 gap-2 flex-1">
+            {quickActions.map((qa, idx) => (
+              <Link 
+                key={idx} 
+                href={qa.href}
+                className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#FAFAFA] transition-colors group"
+              >
+                <div className={`w-10 h-10 rounded-lg bg-[#111827] flex items-center justify-center ${qa.color} group-hover:scale-105 transition-transform`}>
+                  <qa.icon size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-[#111827] truncate">{qa.label}</h4>
+                  <p className="text-xs text-[#6B7280] truncate">{qa.desc}</p>
+                </div>
+                <ArrowRight size={16} className="text-[#9CA3AF] group-hover:text-[#111827] group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Depreciation Alert Board */}
-        <div
-          className="animate-fade-up delay-300"
-          style={{
-            background: "#ffffff",
-            border: "1px solid #f0f0f0",
-            borderRadius: "14px",
-            padding: "22px",
-          }}
+        {/* ── RETIREMENT QUEUE ── */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="lg:col-span-2 bg-white rounded-3xl border border-[#E5E7EB] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
-            <AlertTriangle size={16} color="#ef4444" />
-            <h3 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
-              Depreciation Alerts
-            </h3>
-            {nearRetirementList.length > 0 && (
-              <span className="status-badge status-lost" style={{ marginLeft: "auto" }}>
-                {nearRetirementList.length} at risk
-              </span>
-            )}
+          <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-[#FAFAFA]/50">
+            <div>
+              <h2 className="text-lg font-bold text-[#111827]">Retirement Queue Preview</h2>
+              <p className="text-sm text-[#6B7280]">Assets requiring replacement evaluation</p>
+            </div>
+            <Link href="/dashboard/assets?filter=retirement" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+              View All <ArrowRight size={14} />
+            </Link>
           </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          
+          <div className="p-0 overflow-x-auto flex-1">
             {nearRetirementList.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "#9ca3af", fontSize: "0.825rem" }}>
-                <Package size={28} color="#e5e7eb" style={{ margin: "0 auto 8px auto", display: "block" }} />
-                All assets are in optimal condition
+              <div className="p-12 text-center text-[#6B7280]">
+                <BadgeCheck size={32} className="mx-auto mb-3 opacity-20" />
+                <p>No assets near retirement.</p>
               </div>
             ) : (
-              nearRetirementList.map((asset) => (
-                <div
-                  key={asset.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "12px 14px",
-                    background: "#fef2f2",
-                    border: "1px solid #fee2e2",
-                    borderRadius: "10px",
-                  }}
-                >
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "#111827" }}>
-                      [{asset.tag}] {asset.name}
-                    </div>
-                    <div style={{ fontSize: "0.7rem", color: "#991b1b", marginTop: "1px" }}>
-                      Condition: {asset.condition}
-                    </div>
-                  </div>
-                  <Link
-                    href="/dashboard/assets"
-                    style={{ fontSize: "0.72rem", color: "#b91c1c", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}
-                  >
-                    View →
-                  </Link>
-                </div>
-              ))
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white border-b border-[#E5E7EB] text-[#6B7280]">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Asset</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Acquired Date</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Condition</th>
+                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E7EB]">
+                  {nearRetirementList.map((asset) => (
+                    <tr key={asset.id} className="hover:bg-[#FAFAFA] transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-[#111827] flex items-center gap-2">
+                          <Package size={14} className="text-[#9CA3AF]" />
+                          [{asset.tag}] {asset.name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-[#6B7280]">
+                        {fmtDate(asset.acquisitionDate)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-semibold">
+                          {asset.condition.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                         <Link href={`/dashboard/assets/${asset.id}`} className="text-sm font-semibold text-[#111827] hover:text-indigo-600 transition-colors">
+                           Inspect
+                         </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
+        </motion.div>
 
-          {nearRetirementList.length > 0 && (
-            <div style={{ marginTop: "12px", textAlign: "right" }}>
-              <Link
-                href="/dashboard/assets"
-                style={{ fontSize: "0.775rem", color: "#1a7a4e", fontWeight: 600, textDecoration: "none" }}
-              >
-                View all in Asset Directory →
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── OVERVIEW STATS ROW ── */}
-      <div
-        className="animate-fade-up delay-400"
-        style={{
-          background: "linear-gradient(135deg, #92E4BA 0%, #6ecfa3 100%)",
-          borderRadius: "14px",
-          padding: "20px 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <p style={{ margin: 0, fontSize: "0.78rem", color: "#1a4a2e", fontWeight: 600, opacity: 0.8 }}>
-            Inventory Utilization
-          </p>
-          <p style={{ margin: "4px 0 0 0", fontSize: "1.5rem", fontWeight: 800, color: "#1a4a2e", letterSpacing: "-0.02em" }}>
-            {stats.availableAssets + stats.allocatedAssets > 0
-              ? Math.round((stats.allocatedAssets / (stats.availableAssets + stats.allocatedAssets)) * 100)
-              : 0}%
-          </p>
-          <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#1a4a2e", opacity: 0.75 }}>
-            of total inventory deployed
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "32px" }}>
-          {[
-            { label: "Total Assets", val: stats.availableAssets + stats.allocatedAssets },
-            { label: "In Use", val: stats.allocatedAssets },
-            { label: "Available", val: stats.availableAssets },
-          ].map((item, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <p style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800, color: "#1a4a2e", letterSpacing: "-0.02em" }}>
-                {item.val}
-              </p>
-              <p style={{ margin: "2px 0 0 0", fontSize: "0.72rem", color: "#1a4a2e", opacity: 0.75, fontWeight: 500 }}>
-                {item.label}
-              </p>
-            </div>
-          ))}
-        </div>
-        <Link
-          href="/dashboard/reports"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "9px 16px",
-            background: "rgba(255,255,255,0.3)",
-            backdropFilter: "blur(8px)",
-            color: "#1a4a2e",
-            border: "1.5px solid rgba(255,255,255,0.5)",
-            borderRadius: "9px",
-            fontWeight: 700,
-            fontSize: "0.825rem",
-            cursor: "pointer",
-            textDecoration: "none",
-            transition: "all 0.18s ease",
-          }}
-        >
-          Full Analytics <ArrowRight size={13} />
-        </Link>
       </div>
     </div>
   );

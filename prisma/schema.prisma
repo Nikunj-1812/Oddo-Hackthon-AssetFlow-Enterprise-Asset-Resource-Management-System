@@ -20,6 +20,8 @@ enum UserStatus {
 }
 
 enum AssetStatus {
+  PURCHASED
+  REGISTERED
   AVAILABLE
   ALLOCATED
   RESERVED
@@ -59,6 +61,15 @@ enum AuditStatus {
   CLOSED
 }
 
+enum TransferStatus {
+  PENDING
+  DEPARTMENT_APPROVED
+  ASSET_MANAGER_APPROVED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
 enum AuditItemStatus {
   VERIFIED
   MISSING
@@ -81,7 +92,16 @@ model User {
   raisedIssues     MaintenanceRequest[] @relation("RaisedByUser")
   resolvedIssues   MaintenanceRequest[] @relation("ApprovedByUser")
   verifiedAudits   AuditItem[]
+
+  transfersRequested TransferRequest[]  @relation("TransferRequestedBy")
+  transfersFrom      TransferRequest[]  @relation("TransferCurrentHolder")
+  transfersTo        TransferRequest[]  @relation("TransferRequestedHolder")
   
+  enableReminders      Boolean @default(true)
+  emailNotifications   Boolean @default(true)
+  browserNotifications Boolean @default(true)
+  reminderTimingHours  Int     @default(24)
+
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   
@@ -101,6 +121,7 @@ model Department {
   
   employees      User[]       @relation("EmployeeDept")
   allocations    Allocation[]
+  transferRequests TransferRequest[] @relation("TransferRequestedDepartment")
   
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -132,11 +153,50 @@ model Asset {
   documentKey      String?
   bookable         Boolean       @default(false)
   status           AssetStatus   @default(AVAILABLE)
+
+  // Warranty Information
+  warrantyStart    DateTime?
+  warrantyEnd      DateTime?
+  warrantyProvider String?
+  warrantyNumber   String?
+
+  // Vendor Information
+  vendorName       String?
+  vendorContact    String?
+  vendorEmail      String?
+  vendorPhone      String?
+  poNumber         String?
+  invoiceNumber    String?
+  purchaseSource   String?
+
+  // Purchase Information
+  purchasePrice     Float?
+  currentValue      Float?
+  acquisitionMethod String?
+  fundingSource     String?
+  currency          String?       @default("INR")
+  tax               Float?        @default(0.0)
+
+  // Depreciation
+  depreciationMethod String?      // STRAIGHT_LINE or REDUCING_BALANCE
+  depreciationRate   Float?       // percentage
+
+  // Disposal Information
+  disposalReason    String?
+  disposalMethod    String?
+  disposedById      String?
+  disposedDate      DateTime?
+  customFieldsData  Json?
+  
   
   allocations      Allocation[]
   bookings         Booking[]
   maintenanceRequests MaintenanceRequest[]
   auditItems       AuditItem[]
+  transferRequests TransferRequest[]
+  images           AssetImage[]
+  documents        AssetDocument[]
+  history          AssetHistory[]
   
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
@@ -173,6 +233,9 @@ model Booking {
   startTime DateTime
   endTime   DateTime
   status    BookingStatus @default(UPCOMING)
+  bookForType String      @default("EMPLOYEE")
+  departmentId String?
+  
   
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
@@ -205,6 +268,7 @@ model AuditCycle {
   startDate    DateTime
   endDate      DateTime
   status       AuditStatus @default(DRAFT)
+  auditorIds   String      @default("")
   items        AuditItem[]
   
   createdAt    DateTime    @default(now())
@@ -251,5 +315,119 @@ model Notification {
   message   String
   category  String   // e.g. ALLOCATION, BOOKING, SYSTEM, MAINTENANCE, AUDIT
   read      Boolean  @default(false)
+  priority  String   @default("INFO") // INFO, SUCCESS, WARNING, CRITICAL, APPROVAL, REMINDER
+  archived  Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model TransferRequest {
+  id                    String         @id @default(uuid())
+  assetId               String
+  asset                 Asset          @relation(fields: [assetId], references: [id])
+  currentHolderId       String?
+  currentHolder         User?          @relation("TransferCurrentHolder", fields: [currentHolderId], references: [id])
+  requestedHolderId     String?
+  requestedHolder       User?          @relation("TransferRequestedHolder", fields: [requestedHolderId], references: [id])
+  requestedDepartmentId String?
+  requestedDepartment   Department?    @relation("TransferRequestedDepartment", fields: [requestedDepartmentId], references: [id])
+  
+  reason                String
+  priority              String         // LOW, MEDIUM, HIGH, CRITICAL
+  expectedTransferDate  DateTime
+  additionalNotes       String?
+  
+  status                TransferStatus @default(PENDING)
+  
+  requestedById         String
+  requestedBy           User           @relation("TransferRequestedBy", fields: [requestedById], references: [id])
+  
+  departmentHeadComment String?
+  managerComment        String?
+  
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model ReminderHistory {
+  id        String   @id @default(uuid())
+  targetId  String   // assetId, bookingId, maintenanceRequestId, auditCycleId
+  type      String   // return_24h, return_12h, return_2h, return_overdue, booking_24h, booking_2h, booking_30m, booking_expired, maintenance_dead_soon, maintenance_overdue, audit_starts_tomorrow, audit_ends_tomorrow, audit_overdue
+  userId    String
+  sentAt    DateTime @default(now())
+
+  @@index([targetId, type, userId])
+}
+
+model AssetImage {
+  id         String   @id @default(uuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  url        String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model AssetDocument {
+  id         String   @id @default(uuid())
+  assetId    String
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  name       String
+  url        String
+  type       String   // INVOICE, WARRANTY, MANUAL, INSURANCE, COMPLIANCE
+  createdAt  DateTime @default(now())
+}
+
+model AssetHistory {
+  id          String   @id @default(uuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId      String
+  userName    String?
+  action      String
+  description String
+  prevStatus  String?
+  nextStatus  String?
+  timestamp   DateTime @default(now())
+}
+
+model DiscrepancyReport {
+  id              String   @id @default(uuid())
+  auditCycleId    String   @unique
+  summary         String   // JSON string
+  missingCount    Int
+  damagedCount    Int
+  unexpectedCount Int
+  totalCount      Int
+  createdAt       DateTime @default(now())
+}
+
+model MaintenancePhoto {
+  id          String   @id @default(uuid())
+  requestId   String
+  url         String
+  type        String   // "BEFORE" or "AFTER"
+  createdAt   DateTime @default(now())
+}
+
+model ReturnRequest {
+  id                 String        @id @default(uuid())
+  allocationId       String
+  assetId            String
+  userId             String
+  reason             String
+  status             String        // PENDING, APPROVED, REJECTED
+  comments           String?
+  approvalNotes      String?
+  conditionOnReturn  Condition?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model MaintenanceHistory {
+  id          String   @id @default(uuid())
+  requestId   String
+  status      String   // PENDING, APPROVED, REJECTED, TECHNICIAN_ASSIGNED, IN_PROGRESS, RESOLVED, etc.
+  comments    String?
+  actorName   String?
+  timestamp   DateTime @default(now())
 }

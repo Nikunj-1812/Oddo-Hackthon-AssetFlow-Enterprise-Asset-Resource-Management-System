@@ -7,8 +7,8 @@ export default async function BookingsPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  // Fetch bookable items and current calendar logs
-  const [bookableAssets, bookings] = await Promise.all([
+  // Fetch bookable items, current calendar logs, users, and departments
+  const [bookableAssets, bookings, users, departments] = await Promise.all([
     prisma.asset.findMany({
       where: { bookable: true },
       orderBy: { name: "asc" },
@@ -19,6 +19,12 @@ export default async function BookingsPage() {
         user: true,
       },
       orderBy: { startTime: "asc" },
+    }),
+    prisma.user.findMany({
+      orderBy: { name: "asc" },
+    }),
+    prisma.department.findMany({
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -36,6 +42,8 @@ export default async function BookingsPage() {
       <BookingsClient
         bookableAssets={bookableAssets}
         initialBookings={bookings}
+        users={users}
+        departments={departments}
       />
     </div>
   );

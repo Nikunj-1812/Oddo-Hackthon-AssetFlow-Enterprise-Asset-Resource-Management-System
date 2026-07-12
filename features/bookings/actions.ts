@@ -29,6 +29,10 @@ export async function createBooking(formData: FormData) {
     const startTime = new Date(startTimeStr);
     const endTime = new Date(endTimeStr);
 
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return { error: "Invalid date format." };
+    }
+
     if (startTime >= endTime) {
       return { error: "Start time must be before end time." };
     }
@@ -72,16 +76,20 @@ export async function createBooking(formData: FormData) {
           userId: user.id!,
           startTime,
           endTime,
-          status: "UPCOMING"
-        }
+          status: "UPCOMING",
+          bookForType: formData.get("bookForType") as string || "EMPLOYEE",
+          departmentId: formData.get("departmentId") as string || null
+        } as any,
+        include: { asset: true }
       });
     });
 
     await createNotification(
       user.id!,
       "Resource Booking Confirmed",
-      `Your reservation slot for bookable asset has been successfully approved and scheduled.`,
-      "BOOKING"
+      `Your reservation slot for asset ${result.asset.name} (${result.asset.tag}) has been successfully approved and scheduled.`,
+      "BOOKING",
+      "SUCCESS"
     );
 
     await logActivity({
@@ -95,6 +103,18 @@ export async function createBooking(formData: FormData) {
     return { success: true };
   } catch (error: any) {
     console.error("Create Booking Error:", error);
+    try {
+      const user = await verifyUser();
+      const assetId = formData.get("assetId") as string;
+      const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+      await createNotification(
+        user.id!,
+        "Booking Conflict Warning",
+        `Failed to reserve ${asset?.name || "resource"}: Time slot overlaps with an existing reservation.`,
+        "BOOKING",
+        "WARNING"
+      );
+    } catch (_) {}
     return { error: error.message || "Failed to create booking." };
   }
 }
@@ -104,7 +124,8 @@ export async function cancelBooking(bookingId: string) {
     const user = await verifyUser();
 
     const booking = await prisma.booking.findUnique({
-      where: { id: bookingId }
+      where: { id: bookingId },
+      include: { asset: true }
     });
 
     if (!booking) return { error: "Booking not found." };
@@ -118,8 +139,9 @@ export async function cancelBooking(bookingId: string) {
     await createNotification(
       booking.userId,
       "Resource Reservation Cancelled",
-      `Your reservation slot for asset Tag AF-${booking.assetId.substring(0,4)} has been marked cancelled.`,
-      "BOOKING"
+      `Your reservation slot for asset ${booking.asset.name} (${booking.asset.tag}) has been marked cancelled.`,
+      "BOOKING",
+      "WARNING"
     );
 
     await logActivity({
@@ -135,5 +157,72 @@ export async function cancelBooking(bookingId: string) {
   } catch (error: any) {
     console.error("Cancel Booking Error:", error);
     return { error: error.message || "Failed to cancel booking." };
+  }
+}
+
+export async function rescheduleBooking(bookingId: string, startTimeStr: string, endTimeStr: string) {
+  try {
+    const user = await verifyUser();
+    const startTime = new Date(startTimeStr);
+    const endTime = new Date(endTimeStr);
+
+    if (startTime >= endTime) return { error: "Start time must be before end time." };
+    if (startTime < new Date()) return { error: "Cannot reschedule slots to the past." };
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { asset: true }
+    });
+    if (!booking) return { error: "Booking not found." };
+
+    // Check collision excluding current booking
+    const overlapping = await prisma.booking.findMany({
+      where: {
+        id: { not: bookingId },
+        assetId: booking.assetId,
+        status: { in: ["UPCOMING", "ONGOING"] },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime }
+      },
+      include: { user: true }
+    });
+
+    if (overlapping.length > 0) {
+      const clashingUser = overlapping[0].user?.name || "another staff member";
+      return { error: `Reschedule Conflict: This resource is already reserved by ${clashingUser} during this slot.` };
+    }
+
+    // Save reschedule update
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        startTime,
+        endTime,
+        status: "UPCOMING"
+      }
+    });
+
+    // Notify user
+    await createNotification(
+      booking.userId,
+      "Resource Booking Rescheduled",
+      `Your reservation slot for asset ${booking.asset.name} has been rescheduled to ${startTime.toLocaleString()} - ${endTime.toLocaleString()}.`,
+      "BOOKING",
+      "INFO"
+    );
+
+    await logActivity({
+      userId: user.id!,
+      action: `Rescheduled booking from ${booking.startTime.toLocaleString()} to ${startTime.toLocaleString()}`,
+      targetType: "Booking",
+      targetId: bookingId,
+      oldValue: booking,
+      newValue: updated
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Reschedule Booking Error:", error);
+    return { error: error.message || "Failed to reschedule booking." };
   }
 }

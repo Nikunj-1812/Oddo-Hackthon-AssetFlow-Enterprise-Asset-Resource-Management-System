@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { Role, UserStatus } from "@prisma/client";
+import { createNotification } from "@/lib/notifications";
 
 async function verifyAdmin() {
   const session = await auth();
@@ -49,10 +50,12 @@ export async function createCategory(formData: FormData) {
     const adminUser = await verifyAdmin();
     const name = formData.get("name") as string;
     const warrantyMonths = Number(formData.get("warrantyMonths")) || 0;
+    const customFieldsRaw = formData.get("customFields") as string || "";
 
     if (!name) return { error: "Category name is required." };
 
-    const schema = warrantyMonths > 0 ? { warrantyMonths } : {};
+    const fields = customFieldsRaw.split(",").map(f => f.trim()).filter(f => f.length > 0);
+    const schema = { fields, warrantyMonths };
 
     const cat = await prisma.category.create({
       data: {
@@ -99,13 +102,20 @@ export async function promoteUser(formData: FormData) {
       }
     });
 
-    // If role is DEPARTMENT_HEAD, update the department manager
     if (role === "DEPARTMENT_HEAD" && departmentId) {
       await prisma.department.update({
         where: { id: departmentId },
         data: { managerId: userId }
       });
     }
+
+    await createNotification(
+      userId,
+      "Role & Department Updated",
+      `Your organization role has been updated to ${role} ${departmentId ? "and assigned to department" : ""}.`,
+      "SYSTEM",
+      "SUCCESS"
+    );
 
     await logActivity({
       userId: adminUser.id!,
@@ -174,7 +184,6 @@ export async function updateDepartment(deptId: string, formData: FormData) {
       }
     });
 
-    // If manager changed, reflect in user model role as DEPARTMENT_HEAD
     if (managerId && managerId !== oldDept.managerId) {
       await prisma.user.update({
         where: { id: managerId },
@@ -183,6 +192,13 @@ export async function updateDepartment(deptId: string, formData: FormData) {
           departmentId: deptId
         }
       });
+      await createNotification(
+        managerId,
+        "Assigned as Department Head",
+        `You have been assigned as the Department Head of "${name}".`,
+        "SYSTEM",
+        "SUCCESS"
+      );
     }
 
     await logActivity({
@@ -205,20 +221,18 @@ export async function deleteDepartment(deptId: string) {
   try {
     const adminUser = await verifyAdmin();
 
-    // Check validation constraints: employees exist
     const employeeCount = await prisma.user.count({
       where: { departmentId: deptId }
     });
     if (employeeCount > 0) {
-      throw new Error("Cannot delete department: personnel are currently assigned to this unit.");
+      throw new Error("Cannot delete department: personnel exist.");
     }
 
-    // Check assets allocated
     const assetCount = await prisma.allocation.count({
       where: { departmentId: deptId, status: "APPROVED" }
     });
     if (assetCount > 0) {
-      throw new Error("Cannot delete department: active asset allocations are held by this unit.");
+      throw new Error("Cannot delete department: active allocations exist.");
     }
 
     const dept = await prisma.department.findUnique({
@@ -251,6 +265,7 @@ export async function updateCategory(catId: string, formData: FormData) {
     const adminUser = await verifyAdmin();
     const name = formData.get("name") as string;
     const warrantyMonths = Number(formData.get("warrantyMonths")) || 0;
+    const customFieldsRaw = formData.get("customFields") as string || "";
     const status = formData.get("status") as UserStatus;
 
     if (!catId || !name) return { error: "Category ID and Name are required." };
@@ -260,7 +275,8 @@ export async function updateCategory(catId: string, formData: FormData) {
     });
     if (!oldCat) return { error: "Category not found." };
 
-    const schema = warrantyMonths > 0 ? { warrantyMonths } : {};
+    const fields = customFieldsRaw.split(",").map(f => f.trim()).filter(f => f.length > 0);
+    const schema = { fields, warrantyMonths };
 
     const updated = await prisma.category.update({
       where: { id: catId },

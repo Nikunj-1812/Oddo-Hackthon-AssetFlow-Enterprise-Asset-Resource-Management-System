@@ -27,6 +27,10 @@ export async function createAllocation(formData: FormData) {
     if (!userId && !departmentId) return { error: "Choose an employee or department to allocate." };
 
     const expectedReturnDate = expectedReturnDateStr ? new Date(expectedReturnDateStr) : null;
+    
+    if (expectedReturnDate && isNaN(expectedReturnDate.getTime())) {
+      return { error: "Invalid expected return date." };
+    }
 
     // Check if asset is already allocated (conflict rule)
     const result = await prisma.$transaction(async (tx) => {
@@ -56,7 +60,8 @@ export async function createAllocation(formData: FormData) {
           departmentId,
           expectedReturnDate,
           status: "APPROVED" // auto-approved in simple MVP workflow
-        }
+        },
+        include: { asset: true }
       });
 
       // Update asset status
@@ -71,9 +76,10 @@ export async function createAllocation(formData: FormData) {
     if (userId) {
       await createNotification(
         userId,
-        "Asset Workspace Assignment",
-        `Asset Tag AF-${result.assetId.substring(0,4)} has been allocated to your workspace.`,
-        "ALLOCATION"
+        "Asset Assigned",
+        `Asset ${result.asset.name} (${result.asset.tag}) has been allocated to your workspace. Expected return: ${expectedReturnDate ? new Date(expectedReturnDate).toLocaleDateString() : 'N/A'}.`,
+        "ALLOCATION",
+        "SUCCESS"
       );
     }
 
@@ -116,7 +122,8 @@ export async function returnAsset(formData: FormData) {
           status: "RESOLVED",
           conditionOnReturn,
           notes
-        }
+        },
+        include: { asset: true }
       });
 
       // Revert asset status back to AVAILABLE
@@ -134,9 +141,10 @@ export async function returnAsset(formData: FormData) {
     if (result.userId) {
       await createNotification(
         result.userId,
-        "Asset Handback Acknowledged",
-        `Return processing for allocated asset Tag AF-${result.assetId.substring(0,4)} has been successfully closed.`,
-        "ALLOCATION"
+        "Asset Returned",
+        `Your return check-in for ${result.asset.name} (${result.asset.tag}) has been accepted and processed in ${conditionOnReturn} condition.`,
+        "ALLOCATION",
+        "SUCCESS"
       );
     }
 
