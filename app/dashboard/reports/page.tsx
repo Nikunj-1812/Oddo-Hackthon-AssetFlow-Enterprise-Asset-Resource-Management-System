@@ -1,4 +1,4 @@
-﻿import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import AnalyticsClient from "./analytics-client";
@@ -235,14 +235,14 @@ export default async function AnalyticsPage() {
   const criticalOpen = maintenanceAllTime.filter(m=>m.priority==="CRITICAL"&&["PENDING","IN_PROGRESS","TECHNICIAN_ASSIGNED"].includes(m.status)).length;
 
   const aiInsights: Array<{id:string,icon:string,risk:"LOW"|"MEDIUM"|"HIGH"|"CRITICAL",title:string,message:string,recommendation:string,count:number}> = [];
-  if(idleAssets.length>0) aiInsights.push({id:"idle",icon:"📦",risk:idleAssets.length>10?"HIGH":"MEDIUM",title:"Idle Assets Detected",message:`${idleAssets.length} assets unallocated for 90+ days.`,recommendation:`Review and reallocate these ${idleAssets.length} idle assets.`,count:idleAssets.length});
-  if(warrantyExpiring30>0) aiInsights.push({id:"warranty30",icon:"🛡️",risk:warrantyExpiring30>5?"HIGH":"MEDIUM",title:"Warranty Expiring Soon",message:`${warrantyExpiring30} assets warranty expires within 30 days.`,recommendation:"Contact vendors for renewal.",count:warrantyExpiring30});
-  if(warrantyExpired>0) aiInsights.push({id:"warrantyExp",icon:"⚠️",risk:"HIGH",title:"Expired Warranties",message:`${warrantyExpired} assets operating with expired warranties.`,recommendation:"Prioritize renewal or insurance.",count:warrantyExpired});
-  if(maintenancePct>20) aiInsights.push({id:"mntSpike",icon:"🔧",risk:maintenancePct>50?"HIGH":"MEDIUM",title:"Maintenance Spike",message:`Maintenance tickets up ${maintenancePct}% vs last month.`,recommendation:"Investigate root cause and consider proactive replacement.",count:maintenanceThisMonth});
-  if(overdueAllocations.length>0) aiInsights.push({id:"overdue",icon:"⏰",risk:overdueAllocations.length>5?"HIGH":"MEDIUM",title:"Overdue Returns",message:`${overdueAllocations.length} allocations past return date.`,recommendation:"Send reminders and escalate.",count:overdueAllocations.length});
-  if(nearRetirementCount>0) aiInsights.push({id:"nearRet",icon:"📉",risk:nearRetirementCount>15?"HIGH":"LOW",title:"Assets Near End of Life",message:`${nearRetirementCount} assets in poor condition or over 3 years old.`,recommendation:"Plan replacement budget.",count:nearRetirementCount});
-  if(criticalOpen>0) aiInsights.push({id:"critMnt",icon:"🚨",risk:"CRITICAL",title:"Critical Maintenance Open",message:`${criticalOpen} critical maintenance requests unresolved.`,recommendation:"Assign technicians immediately.",count:criticalOpen});
-  if(departmentPerformance[0]) aiInsights.push({id:"topDept",icon:"🏢",risk:"LOW",title:`${departmentPerformance[0].name} — Highest Utilization`,message:`${departmentPerformance[0].assets} assets for ${departmentPerformance[0].employees} employees.`,recommendation:"Monitor for resource saturation.",count:departmentPerformance[0].assets});
+  if(idleAssets.length>0) aiInsights.push({id:"idle",icon:"",risk:idleAssets.length>10?"HIGH":"MEDIUM",title:"Idle Assets Detected",message:`${idleAssets.length} assets unallocated for 90+ days.`,recommendation:`Review and reallocate these ${idleAssets.length} idle assets.`,count:idleAssets.length});
+  if(warrantyExpiring30>0) aiInsights.push({id:"warranty30",icon:"",risk:warrantyExpiring30>5?"HIGH":"MEDIUM",title:"Warranty Expiring Soon",message:`${warrantyExpiring30} assets warranty expires within 30 days.`,recommendation:"Contact vendors for renewal.",count:warrantyExpiring30});
+  if(warrantyExpired>0) aiInsights.push({id:"warrantyExp",icon:"",risk:"HIGH",title:"Expired Warranties",message:`${warrantyExpired} assets operating with expired warranties.`,recommendation:"Prioritize renewal or insurance.",count:warrantyExpired});
+  if(maintenancePct>20) aiInsights.push({id:"mntSpike",icon:"",risk:maintenancePct>50?"HIGH":"MEDIUM",title:"Maintenance Spike",message:`Maintenance tickets up ${maintenancePct}% vs last month.`,recommendation:"Investigate root cause and consider proactive replacement.",count:maintenanceThisMonth});
+  if(overdueAllocations.length>0) aiInsights.push({id:"overdue",icon:"",risk:overdueAllocations.length>5?"HIGH":"MEDIUM",title:"Overdue Returns",message:`${overdueAllocations.length} allocations past return date.`,recommendation:"Send reminders and escalate.",count:overdueAllocations.length});
+  if(nearRetirementCount>0) aiInsights.push({id:"nearRet",icon:"",risk:nearRetirementCount>15?"HIGH":"LOW",title:"Assets Near End of Life",message:`${nearRetirementCount} assets in poor condition or over 3 years old.`,recommendation:"Plan replacement budget.",count:nearRetirementCount});
+  if(criticalOpen>0) aiInsights.push({id:"critMnt",icon:"",risk:"CRITICAL",title:"Critical Maintenance Open",message:`${criticalOpen} critical maintenance requests unresolved.`,recommendation:"Assign technicians immediately.",count:criticalOpen});
+  if(departmentPerformance[0]) aiInsights.push({id:"topDept",icon:"",risk:"LOW",title:`${departmentPerformance[0].name} — Highest Utilization`,message:`${departmentPerformance[0].assets} assets for ${departmentPerformance[0].employees} employees.`,recommendation:"Monitor for resource saturation.",count:departmentPerformance[0].assets});
 
   const sparkAssets = registrationTrend.slice(-6).map(d=>({m:d.month,v:d.registrations}));
   const sparkMaintenance = maintenanceTrend.slice(-6).map(d=>({m:d.month,v:d.total}));

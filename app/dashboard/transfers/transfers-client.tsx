@@ -80,7 +80,7 @@ export default function TransfersClient({ initialTransfers, assets, users, depar
         <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", height: "100%" }}>
           <CardHeader>
             <CardTitle style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "1.1rem" }}>
-              <ArrowRightLeft size={20} color="#3b82f6" />
+              <ArrowRightLeft size={20} color="#6ecfa3" />
               New Transfer Request
             </CardTitle>
           </CardHeader>
@@ -157,7 +157,7 @@ export default function TransfersClient({ initialTransfers, assets, users, depar
                 <Input name="additionalNotes" placeholder="Optional notes" style={{ backgroundColor: "#f9fafb" }} />
               </div>
 
-              <Button type="submit" disabled={isSubmitting} style={{ backgroundColor: "#3b82f6", color: "white", borderRadius: "8px", marginTop: "10px" }}>
+              <Button type="submit" disabled={isSubmitting} style={{ backgroundColor: "#6ecfa3", color: "white", borderRadius: "8px", marginTop: "10px" }}>
                 {isSubmitting ? "Submitting..." : "Submit Transfer Request"}
               </Button>
             </form>

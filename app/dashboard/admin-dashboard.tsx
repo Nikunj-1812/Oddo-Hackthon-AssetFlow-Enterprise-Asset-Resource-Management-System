@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { fmtDate } from "@/lib/utils";
 import {
   Boxes, Users, Building2, Tag, CalendarDays, ClipboardCheck,
   UserCheck, Wrench, TrendingUp, TrendingDown, ArrowRight,
-  BarChart3, Activity, Shield, Package, Search, ArrowRightLeft
+  BarChart3, Activity, Shield, Package, Search, ArrowRightLeft,
+  Clock
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
@@ -24,7 +26,6 @@ interface Props {
   recentActivity: any[];
 }
 
-const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
 const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 const generateTrend = (base: number, up: boolean) =>
@@ -32,9 +33,116 @@ const generateTrend = (base: number, up: boolean) =>
     v: Math.max(0, base + (up ? i : 7 - i) * Math.ceil(base * 0.04) + Math.floor(Math.random() * 2)),
   }));
 
+const getIcon = (targetType: string) => {
+  const size = 16;
+  switch (targetType) {
+    case "Asset":
+      return <Package size={size} className="text-blue-600" />;
+    case "User":
+      return <Users size={size} className="text-indigo-600" />;
+    case "Allocation":
+      return <ClipboardCheck size={size} className="text-emerald-600" />;
+    case "MaintenanceRequest":
+      return <Wrench size={size} className="text-amber-600" />;
+    case "Audit":
+    case "AuditCycle":
+      return <Shield size={size} className="text-purple-600" />;
+    case "TransferRequest":
+      return <ArrowRightLeft size={size} className="text-cyan-600" />;
+    default:
+      return <Activity size={size} className="text-gray-600" />;
+  }
+};
+
+const getIconBg = (targetType: string) => {
+  switch (targetType) {
+    case "Asset":
+      return "bg-blue-50/70 border-blue-100";
+    case "User":
+      return "bg-indigo-50/70 border-indigo-100";
+    case "Allocation":
+      return "bg-emerald-50/70 border-emerald-100";
+    case "MaintenanceRequest":
+      return "bg-amber-50/70 border-amber-100";
+    case "Audit":
+    case "AuditCycle":
+      return "bg-purple-50/70 border-purple-100";
+    case "TransferRequest":
+      return "bg-cyan-50/70 border-cyan-100";
+    default:
+      return "bg-gray-50/70 border-gray-100";
+  }
+};
+
+const getAvatarColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colors = [
+    "bg-indigo-50 text-indigo-600 border-indigo-200/60",
+    "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200/60",
+    "bg-pink-50 text-pink-600 border-pink-200/60",
+    "bg-blue-50 text-blue-600 border-blue-200/60",
+    "bg-cyan-50 text-cyan-600 border-cyan-200/60",
+    "bg-teal-50 text-teal-600 border-teal-200/60",
+    "bg-violet-50 text-violet-600 border-violet-200/60",
+  ];
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const renderActionText = (action: string) => {
+  const words = action.split(" ");
+  return (
+    <span className="leading-relaxed text-[#374151]">
+      {words.map((word, idx) => {
+        const cleanWord = word.replace(/[,.:]/g, "");
+        const suffix = word.slice(cleanWord.length);
+        const space = idx < words.length - 1 ? " " : "";
+        
+        if (["APPROVED", "RESOLVED", "SUCCESS", "VERIFIED"].includes(cleanWord)) {
+          return (
+            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/50 mx-1 align-baseline">
+              {cleanWord}
+            </span>
+          );
+        }
+        if (["PENDING", "IN_PROGRESS", "ONGOING", "TECHNICIAN_ASSIGNED"].includes(cleanWord)) {
+          return (
+            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 mx-1 align-baseline">
+              {cleanWord.replace("_", " ")}
+            </span>
+          );
+        }
+        if (["REJECTED", "CANCELLED", "FAILED", "DAMAGED", "LOST"].includes(cleanWord)) {
+          return (
+            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/50 mx-1 align-baseline">
+              {cleanWord}
+            </span>
+          );
+        }
+        
+        // Handle UUID/HEX highlights
+        if (cleanWord.length > 20 && cleanWord.includes("-")) {
+          return (
+            <span key={idx} className="inline-flex">
+              <code className="px-1.5 py-0.5 font-mono text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-150 rounded leading-none align-baseline">
+                {cleanWord.substring(0, 8)}...
+              </code>
+              {suffix}{space}
+            </span>
+          );
+        }
+
+        return <span key={idx}>{word}{space}</span>;
+      })}
+    </span>
+  );
+};
+
 export default function AdminDashboard({ stats, recentActivity }: Props) {
   const kpis = [
-    { title: "Total Assets", value: stats.totalAssets, icon: Boxes, color: "text-[#1a7a4e]", bg: "bg-[#e8faf3]", border: "border-[#92E4BA]/30", trend: "+8%", trendUp: true, href: "/dashboard/assets" },
+    { title: "Total Assets", value: stats.totalAssets, icon: Boxes, color: "text-[#1a7a4e]", bg: "bg-[#e8faf3]", border: "border-[#6ecfa3]/30", trend: "+8%", trendUp: true, href: "/dashboard/assets" },
     { title: "Staff Members", value: stats.totalEmployees, icon: Users, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", trend: "+2", trendUp: true, href: "/dashboard/organization" },
     { title: "Departments", value: stats.departmentsCount, icon: Building2, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", trend: "Stable", trendUp: true, href: "/dashboard/organization" },
     { title: "Asset Categories", value: stats.categoriesCount, icon: Tag, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100", trend: "+1", trendUp: true, href: "/dashboard/assets" },
@@ -45,7 +153,7 @@ export default function AdminDashboard({ stats, recentActivity }: Props) {
   ];
 
   const quickLinks = [
-    { href: "/dashboard/assets", label: "Asset Directory", desc: "Manage all assets", icon: Boxes, color: "text-[#92E4BA]" },
+    { href: "/dashboard/assets", label: "Asset Directory", desc: "Manage all assets", icon: Boxes, color: "text-[#6ecfa3]" },
     { href: "/dashboard/organization", label: "Organization", desc: "Staff & departments", icon: Building2, color: "text-indigo-400" },
     { href: "/dashboard/audits", label: "Audit Cycles", desc: "Compliance audits", icon: ClipboardCheck, color: "text-emerald-400" },
     { href: "/dashboard/transfers", label: "Transfers", desc: "Asset requests", icon: ArrowRightLeft, color: "text-cyan-400" },
@@ -90,8 +198,8 @@ export default function AdminDashboard({ stats, recentActivity }: Props) {
                     <AreaChart data={generateTrend(kpi.value, kpi.trendUp)}>
                       <defs>
                         <linearGradient id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={kpi.trendUp ? "#92E4BA" : "#f59e0b"} stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor={kpi.trendUp ? "#92E4BA" : "#f59e0b"} stopOpacity={0}/>
+                          <stop offset="5%" stopColor={kpi.trendUp ? "#6ecfa3" : "#f59e0b"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={kpi.trendUp ? "#6ecfa3" : "#f59e0b"} stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <Area type="monotone" dataKey="v" stroke="none" fill={`url(#grad-${i})`} />
@@ -149,52 +257,66 @@ export default function AdminDashboard({ stats, recentActivity }: Props) {
               <h2 className="text-lg font-bold text-[#111827]">System Activity</h2>
               <p className="text-sm text-[#6B7280]">Global audit log preview</p>
             </div>
-            <Link href="/dashboard/activity-logs" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+            <Link href="/dashboard/activity-logs" className="text-sm font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors flex items-center gap-1">
               View All <ArrowRight size={14} />
             </Link>
           </div>
           
-          <div className="p-0 overflow-x-auto flex-1">
+          <div className="p-0 overflow-x-auto flex-1 max-h-[480px]">
             {recentActivity.length === 0 ? (
               <div className="p-12 text-center text-[#6B7280]">
                 <Activity size={32} className="mx-auto mb-3 opacity-20" />
                 <p>No recent activity recorded.</p>
               </div>
             ) : (
-              <table className="w-full text-sm text-left">
-                <thead className="bg-white border-b border-[#E5E7EB] text-[#6B7280]">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Timestamp</th>
-                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">Action</th>
-                    <th className="px-6 py-4 font-semibold uppercase text-xs tracking-wider">User ID</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E5E7EB]">
-                  {recentActivity.map((log) => (
-                    <tr key={log.id} className="hover:bg-[#FAFAFA] transition-colors group">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-[#111827] font-medium">{fmtDate(log.timestamp)}</div>
-                        <div className="text-xs text-[#9CA3AF] mt-0.5">{fmtTime(log.timestamp)}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-[#111827] flex items-center gap-2">
-                          {log.targetType === "Asset" ? <Package size={14} className="text-blue-500" /> : 
-                           log.targetType === "User" ? <Users size={14} className="text-indigo-500" /> :
-                           log.targetType === "Allocation" ? <ClipboardCheck size={14} className="text-green-500" /> :
-                           <Activity size={14} className="text-gray-400" />}
-                          {log.action}
+              <div className="divide-y divide-[#E5E7EB]">
+                {recentActivity.map((log) => (
+                  <div key={log.id} className="p-5 hover:bg-[#FAFAFA] transition-all duration-200 flex items-start justify-between gap-4 group">
+                    <div className="flex items-start gap-4">
+                      {/* Left Icon Badge */}
+                      <div className={`mt-0.5 p-2 rounded-xl flex items-center justify-center border shadow-sm ${getIconBg(log.targetType)}`}>
+                        {getIcon(log.targetType)}
+                      </div>
+                      
+                      {/* Middle Content */}
+                      <div className="space-y-1.5">
+                        <div className="text-sm font-medium">
+                          {renderActionText(log.action)}
                         </div>
-                        <div className="text-xs text-[#6B7280] mt-1 font-mono bg-[#FAFAFA] border border-[#E5E7EB] rounded px-1.5 py-0.5 inline-block">
-                          Target: {log.targetType} #{log.targetId.substring(0,8)}
+                        
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-[#6B7280]">
+                          <span className="font-mono bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+                            {log.targetType} #{log.targetId.substring(0, 8)}
+                          </span>
+                          <span className="text-gray-300">•</span>
+                          <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                            <Clock size={12} className="shrink-0" />
+                            {fmtDate(log.timestamp)} {fmtTime(log.timestamp)}
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-[#6B7280] font-mono text-xs">
-                        {log.userId}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    {/* Right User Info */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">User ID</span>
+                          <span 
+                            className="text-[10px] font-mono text-gray-500 bg-gray-50 border border-gray-150 px-1 py-0.5 rounded hover:bg-gray-100 transition-colors cursor-pointer select-all" 
+                            title={log.userId}
+                          >
+                            {log.userId.substring(0, 8)}
+                          </span>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border shadow-sm ${getAvatarColor(log.userId)}`}>
+                          {log.userId.substring(0, 2).toUpperCase()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </motion.div>

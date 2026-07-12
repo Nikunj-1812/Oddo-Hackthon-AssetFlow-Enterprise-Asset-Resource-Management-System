@@ -8,6 +8,8 @@ import {
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 import { submitReturnRequest } from "@/features/allocations/actions";
+import { toast } from "sonner";
+import { fmtDate } from "@/lib/utils";
 
 interface Props {
   stats: {
@@ -26,7 +28,6 @@ const generateTrend = (base: number) =>
     v: Math.max(0, base + Math.floor(Math.random() * 3) - 1),
   }));
 
-const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA");
 const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
 export default function EmployeeDashboard({ stats, myAssets, myBookings, myRequests }: Props) {
@@ -170,7 +171,7 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
                               <AlertCircle size={12} /> Overdue Return
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 bg-[#e8faf3] text-[#1a7a4e] border border-[#92E4BA]/30 rounded-full text-xs font-semibold flex items-center gap-1 w-max">
+                            <span className="px-2.5 py-1 bg-[#e8faf3] text-[#1a7a4e] border border-[#6ecfa3]/30 rounded-full text-xs font-semibold flex items-center gap-1 w-max">
                               <CheckCircle2 size={12} /> Active
                             </span>
                           )}
@@ -180,10 +181,10 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
                             onClick={async () => {
                               const notes = prompt("Enter any return comments/reason:") || "";
                               const res = await submitReturnRequest(alloc.id, notes);
-                              if (res.error) alert(res.error);
+                              if (res.error) toast.error(res.error);
                               else {
-                                alert("Return request submitted to manager!");
-                                window.location.reload();
+                                toast.success("Return request submitted to manager!");
+                                setTimeout(() => window.location.reload(), 1000);
                               }
                             }}
                             className="bg-white border border-[#E5E7EB] text-[#111827] px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#FAFAFA] transition-all"
@@ -212,7 +213,7 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
               <h2 className="text-lg font-bold text-[#111827]">My Maintenance Requests</h2>
               <p className="text-sm text-[#6B7280]">Recent tickets</p>
             </div>
-            <Link href="/dashboard/maintenance" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+            <Link href="/dashboard/maintenance" className="text-sm font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors flex items-center gap-1">
               Submit New <ArrowRight size={14} />
             </Link>
           </div>

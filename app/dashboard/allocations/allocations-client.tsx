@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
+import { fmtDate } from "@/lib/utils";
 import { createAllocation, returnAsset } from "@/features/allocations/actions";
 import { createTransferRequest } from "@/features/transfers/actions";
 import { AlertCircle, CheckCircle2, ChevronRight, Search, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Locale-fixed date formatter
-const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
 
 interface Props {
   initialAllocations: any[];
@@ -116,7 +115,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                   setSelectedAssetId(e.target.value);
                   setAllocError(null);
                 }}
-                className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all"
+                className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all"
               >
                 <option value="">-- Choose Asset --</option>
                 {assets.map((a) => (
@@ -146,7 +145,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                     onClick={async () => {
                       const reason = prompt(`Enter transfer reason details:`) || "";
                       if (!reason.trim()) {
-                        alert("Transfer reason details are required.");
+                        toast.error("Transfer reason details are required.");
                         return;
                       }
                       const fd = new FormData();
@@ -159,17 +158,17 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                       const targetDeptId = (document.getElementsByName("departmentId")[0] as HTMLSelectElement)?.value;
 
                       if (!targetUserId && !targetDeptId) {
-                        alert("Please select target Employee or Department in allocation form before requesting a transfer.");
+                        toast.error("Please select target Employee or Department in allocation form before requesting a transfer.");
                         return;
                       }
                       if (targetUserId) fd.append("requestedHolderId", targetUserId);
                       if (targetDeptId) fd.append("requestedDepartmentId", targetDeptId);
 
                       const res = await createTransferRequest(fd);
-                      if (res.error) alert(res.error);
+                      if (res.error) toast.error(res.error);
                       else {
-                        alert("Transfer request created in 1-click successfully!");
-                        window.location.reload();
+                        toast.success("Transfer request created in 1-click successfully!");
+                        setTimeout(() => window.location.reload(), 1000);
                       }
                     }}
                     className="w-full bg-[#111827] text-white hover:bg-black py-1.5 px-3 rounded-lg text-xs font-semibold transition-all shadow-sm"
@@ -183,7 +182,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-[#111827]">Employee</label>
-                <select name="userId" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all">
+                <select name="userId" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all">
                   <option value="">-- Select --</option>
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
@@ -193,7 +192,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
 
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-[#111827]">Department</label>
-                <select name="departmentId" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all">
+                <select name="departmentId" className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all">
                   <option value="">-- Select --</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
@@ -208,7 +207,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                 type="date"
                 name="expectedReturnDate"
                 required
-                className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all"
+                className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all"
               />
             </div>
 
@@ -217,7 +216,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
             )}
             
             {allocSuccess && (
-              <div className="text-[#1a7a4e] text-sm font-medium bg-[#e8faf3] p-3 rounded-xl border border-[#92E4BA]/30 flex items-center gap-2">
+              <div className="text-[#1a7a4e] text-sm font-medium bg-[#e8faf3] p-3 rounded-xl border border-[#6ecfa3]/30 flex items-center gap-2">
                 <CheckCircle2 size={16} /> Asset allocated successfully!
               </div>
             )}
@@ -225,7 +224,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
             <button
               type="submit"
               disabled={allocating || allocSuccess}
-              className="w-full bg-[#111827] text-white font-medium rounded-xl px-4 py-3 hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+              className="w-full bg-[#6ecfa3] text-white font-medium rounded-xl px-4 py-3 hover:bg-[#53ba8d] transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
             >
               {allocating ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -256,7 +255,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                 placeholder="Filter logs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all"
+                className="pl-9 pr-4 py-2 border border-[#E5E7EB] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all"
               />
             </div>
           </div>
@@ -306,7 +305,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                           {isOverdue ? (
                             <span className="px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-full text-xs font-semibold">Overdue</span>
                           ) : (
-                            <span className="px-2.5 py-1 bg-[#e8faf3] text-[#1a7a4e] border border-[#92E4BA]/30 rounded-full text-xs font-semibold">On Schedule</span>
+                            <span className="px-2.5 py-1 bg-[#e8faf3] text-[#1a7a4e] border border-[#6ecfa3]/30 rounded-full text-xs font-semibold">On Schedule</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -368,7 +367,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-[#111827]">Return Condition</label>
-                  <select name="condition" required className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all">
+                  <select name="condition" required className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all">
                     <option value="GOOD">Good / Working</option>
                     <option value="NEEDS_REPAIR">Needs Repair</option>
                     <option value="LOST">Lost</option>
@@ -381,7 +380,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                   <textarea 
                     name="notes"
                     placeholder="Any issues or comments..."
-                    className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all resize-none h-24"
+                    className="w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#6ecfa3]/50 focus:border-[#6ecfa3] transition-all resize-none h-24"
                   />
                 </div>
 
@@ -389,7 +388,7 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                   <div className="text-red-500 text-sm font-medium bg-red-50 p-3 rounded-xl border border-red-100">{returnError}</div>
                 )}
                 {returnSuccess && (
-                  <div className="text-[#1a7a4e] text-sm font-medium bg-[#e8faf3] p-3 rounded-xl border border-[#92E4BA]/30">Asset returned successfully!</div>
+                  <div className="text-[#1a7a4e] text-sm font-medium bg-[#e8faf3] p-3 rounded-xl border border-[#6ecfa3]/30">Asset returned successfully!</div>
                 )}
 
                 <div className="flex gap-3 pt-2">

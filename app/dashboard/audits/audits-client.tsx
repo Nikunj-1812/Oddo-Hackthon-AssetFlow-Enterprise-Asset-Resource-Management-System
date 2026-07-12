@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { createAuditCycle, verifyAuditItem, closeAuditCycle, updateAuditCycleAuditors } from "@/features/audits/actions";
 import {
   ClipboardCheck,
@@ -95,9 +96,10 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
     const notes = prompt(`Enter optional audit verification notes:`) || "";
     const result = await verifyAuditItem(itemId, status, notes);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      window.location.reload();
+      toast.success("Item verified successfully");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -106,10 +108,10 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
     setError(null);
     const result = await closeAuditCycle(cycleId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      alert("Audit cycle closed and locked!");
-      window.location.reload();
+      toast.success("Audit cycle closed and locked!");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -117,11 +119,11 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
     if (!selectedCycle) return;
     const result = await updateAuditCycleAuditors(selectedCycle.id, selectedAuditorIds);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      alert("Checkers updated successfully.");
+      toast.success("Checkers updated successfully.");
       setEditingAuditors(false);
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -173,12 +175,18 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
       </div>
 
       {/* COLUMN 1: Action triggers / New Cycle / Auditor dashboard */}
-      <div style={{ flex: 1, minWidth: "300px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div style={{
+        flex: isManagerOrAdmin ? "0 0 680px" : 1,
+        display: isManagerOrAdmin ? "grid" : "flex",
+        gridTemplateColumns: isManagerOrAdmin ? "1fr 1fr" : undefined,
+        flexDirection: isManagerOrAdmin ? undefined : "column",
+        gap: "1.5rem"
+      }}>
         
         {/* Only Manager/Admin can create cycle */}
         {isManagerOrAdmin ? (
-          <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
-            <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
+          <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", display: "flex", flexDirection: "column" }}>
+            <CardHeader style={{ padding: "20px 20px 10px 20px", flexShrink: 0 }}>
               <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
                 Start Audit Cycle
               </CardTitle>
@@ -186,94 +194,99 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
                 Initialize location-scoped checklist verifications
               </CardDescription>
             </CardHeader>
-            <CardContent style={{ padding: "10px 20px 20px 20px" }}>
-              <form onSubmit={handleCreateCycle} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Cycle Name</label>
-                  <input
-                    name="name"
-                    required
-                    placeholder="e.g. Q3 HQ Stock Check"
-                    style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
-                  />
+            <CardContent style={{ padding: "10px 20px 20px 20px", flex: 1 }}>
+              <form onSubmit={handleCreateCycle} style={{ display: "flex", flexDirection: "column", gap: "14px", height: "100%", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Cycle Name</label>
+                    <input
+                      name="name"
+                      required
+                      placeholder="e.g. Q3 HQ Stock Check"
+                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Select Location Scope</label>
+                    <select
+                      name="location"
+                      required
+                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", cursor: "pointer", background: "#ffffff" }}
+                    >
+                      <option value="">-- Choose Location --</option>
+                      {locations.map((loc) => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Checker selection checkbox list */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Assign Checkers</label>
+                    <div style={{ maxHeight: "110px", overflowY: "auto", border: "1.5px solid #e5e7eb", borderRadius: "9px", padding: "8px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {allUsers.map((u) => (
+                        <label key={u.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", cursor: "pointer" }}>
+                          <input type="checkbox" name="auditorIds" value={u.id} style={{ width: 14, height: 14 }} />
+                          {u.name} ({u.role.replace(/_/g, " ")})
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Start Date</label>
+                      <input
+                        name="startDate"
+                        type="date"
+                        required
+                        style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>End Date</label>
+                      <input
+                        name="endDate"
+                        type="date"
+                        required
+                        style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Select Location Scope</label>
-                  <select
-                    name="location"
-                    required
-                    style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", cursor: "pointer", background: "#ffffff" }}
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+                  {error && (
+                    <div style={{ padding: "8px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "8px", fontSize: "0.78rem" }}>
+                      {error}
+                    </div>
+                  )}
+                  {success && (
+                    <div style={{ padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "8px", fontSize: "0.78rem" }}>
+                      ✓ Audit cycle created checklist!
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{
+                      padding: "10px",
+                      borderRadius: "9px",
+                      border: "none",
+                      backgroundColor: "#6ecfa3",
+                      color: "#1a4a2e",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontSize: "0.825rem",
+                      boxShadow: "0 4px 10px rgba(146,228,186,0.25)",
+                      width: "100%"
+                    }}
                   >
-                    <option value="">-- Choose Location --</option>
-                    {locations.map((loc) => (
-                      <option key={loc} value={loc}>{loc}</option>
-                    ))}
-                  </select>
+                    {submitting ? "Bootstrapping..." : "Start Scoped Audit"}
+                  </button>
                 </div>
-
-                {/* Checker selection checkbox list */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Assign Checkers</label>
-                  <div style={{ maxHeight: "110px", overflowY: "auto", border: "1.5px solid #e5e7eb", borderRadius: "9px", padding: "8px 12px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {allUsers.map((u) => (
-                      <label key={u.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.78rem", cursor: "pointer" }}>
-                        <input type="checkbox" name="auditorIds" value={u.id} style={{ width: 14, height: 14 }} />
-                        {u.name} ({u.role.replace(/_/g, " ")})
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Start Date</label>
-                    <input
-                      name="startDate"
-                      type="date"
-                      required
-                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>End Date</label>
-                    <input
-                      name="endDate"
-                      type="date"
-                      required
-                      style={{ padding: "9px 12px", borderRadius: "9px", border: "1.5px solid #e5e7eb", fontSize: "0.85rem", outline: "none", background: "#fafafa" }}
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div style={{ padding: "8px 12px", background: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "8px", fontSize: "0.78rem" }}>
-                    {error}
-                  </div>
-                )}
-                {success && (
-                  <div style={{ padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "8px", fontSize: "0.78rem" }}>
-                    ✓ Audit cycle created checklist!
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: "10px",
-                    borderRadius: "9px",
-                    border: "none",
-                    backgroundColor: "#92E4BA",
-                    color: "#1a4a2e",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: "0.825rem",
-                    boxShadow: "0 4px 10px rgba(146,228,186,0.25)"
-                  }}
-                >
-                  {submitting ? "Bootstrapping..." : "Start Scoped Audit"}
-                </button>
               </form>
             </CardContent>
           </Card>
@@ -290,8 +303,8 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
         )}
 
         {/* COLUMN 2: Cycles list */}
-        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px" }}>
-          <CardHeader style={{ padding: "20px 20px 10px 20px" }}>
+        <Card style={{ border: "1px solid #f0f0f0", borderRadius: "14px", display: "flex", flexDirection: "column", maxHeight: isManagerOrAdmin ? "490px" : undefined }}>
+          <CardHeader style={{ padding: "20px 20px 10px 20px", flexShrink: 0 }}>
             <CardTitle style={{ fontSize: "0.95rem", fontWeight: 800, color: "#111827" }}>
               Verification Cycles
             </CardTitle>
@@ -299,7 +312,7 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
               Select a run to track items verification
             </CardDescription>
           </CardHeader>
-          <CardContent style={{ padding: "10px 20px 20px 20px" }}>
+          <CardContent style={{ padding: "10px 20px 20px 20px", overflowY: "auto", flex: 1 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {checkerCycles.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "1.5rem", color: "#9ca3af", fontSize: "0.825rem" }}>
@@ -315,7 +328,7 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
                       onClick={() => { setSelectedCycle(c); setEditingAuditors(false); }}
                       style={{
                         padding: "12px 14px",
-                        border: `1.5px solid ${isActive ? "#92E4BA" : "#f0f0f0"}`,
+                        border: `1.5px solid ${isActive ? "#6ecfa3" : "#f0f0f0"}`,
                         backgroundColor: isActive ? "#f0faf5" : "#ffffff",
                         borderRadius: "10px",
                         cursor: "pointer",
@@ -451,7 +464,7 @@ export default function AuditsClient({ cycles, locations, allUsers = [], current
                 </div>
                 <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                   <button onClick={() => setEditingAuditors(false)} style={{ padding: "5px 10px", border: "1px solid #d1d5db", borderRadius: "5px", fontSize: "0.72rem", background: "transparent", cursor: "pointer" }}>Cancel</button>
-                  <button onClick={handleUpdateCheckers} style={{ padding: "5px 12px", border: "none", borderRadius: "5px", fontSize: "0.72rem", background: "#92E4BA", color: "#1a4a2e", fontWeight: 700, cursor: "pointer" }}>Save Checkers</button>
+                  <button onClick={handleUpdateCheckers} style={{ padding: "5px 12px", border: "none", borderRadius: "5px", fontSize: "0.72rem", background: "#6ecfa3", color: "#1a4a2e", fontWeight: 700, cursor: "pointer" }}>Save Checkers</button>
                 </div>
               </div>
             )}

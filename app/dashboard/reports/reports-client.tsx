@@ -17,9 +17,9 @@ interface Props {
   idleAssets: any[];
 }
 
-const COLORS = ["#92E4BA", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+import { fmtDate } from "@/lib/utils";
 
-const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+const COLORS = ["#6ecfa3", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
 export default function ReportsClient({
   statusData,
@@ -46,15 +46,15 @@ export default function ReportsClient({
               <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#92E4BA" stopOpacity={0.6}/>
-                    <stop offset="95%" stopColor="#92E4BA" stopOpacity={0.0}/>
+                    <stop offset="5%" stopColor="#6ecfa3" stopOpacity={0.6}/>
+                    <stop offset="95%" stopColor="#6ecfa3" stopOpacity={0.0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <YAxis tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <Tooltip />
-                <Area type="monotone" dataKey="costAdded" stroke="#7cd4a5" fillOpacity={1} fill="url(#colorCost)" name="Acquisitions Cost (₹)" />
+                <Area type="monotone" dataKey="costAdded" stroke="#53ba8d" fillOpacity={1} fill="url(#colorCost)" name="Acquisitions Cost (₹)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -135,7 +135,7 @@ export default function ReportsClient({
                 <YAxis tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <Tooltip />
                 <Legend style={{ fontSize: "0.8rem" }} />
-                <Bar dataKey="assets" fill="#92E4BA" name="Assets Held" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="assets" fill="#6ecfa3" name="Assets Held" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="personnel" fill="#a78bfa" name="Total Personnel" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

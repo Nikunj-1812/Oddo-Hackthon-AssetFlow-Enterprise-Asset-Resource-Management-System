@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { createBooking, cancelBooking, rescheduleBooking } from "@/features/bookings/actions";
@@ -102,9 +103,10 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
     if (!confirm("Are you sure you want to cancel this booking?")) return;
     const result = await cancelBooking(bookingId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      window.location.reload();
+      toast.success("Booking cancelled successfully");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -117,8 +119,8 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
     if (result?.error) {
       setError(result.error);
     } else {
-      alert("Rescheduled successfully!");
-      window.location.reload();
+      toast.success("Rescheduled successfully!");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -193,7 +195,7 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
               style={{
                 minHeight: "85px",
                 background: isToday ? "#f0faf5" : "#ffffff",
-                border: isToday ? "1.5px solid #92E4BA" : "1px solid #e5e7eb",
+                border: isToday ? "1.5px solid #6ecfa3" : "1px solid #e5e7eb",
                 borderRadius: "8px",
                 padding: "6px",
                 opacity: isCurrentMonth ? 1 : 0.45,
@@ -365,11 +367,11 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
               <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Book For</label>
               <div style={{ display: "flex", gap: "10px" }}>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", cursor: "pointer" }}>
-                  <input type="radio" checked={bookFor === "EMPLOYEE"} onChange={() => setBookFor("EMPLOYEE")} style={{ accentColor: "#92E4BA" }} />
+                  <input type="radio" checked={bookFor === "EMPLOYEE"} onChange={() => setBookFor("EMPLOYEE")} style={{ accentColor: "#6ecfa3" }} />
                   Employee
                 </label>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.8rem", cursor: "pointer" }}>
-                  <input type="radio" checked={bookFor === "DEPARTMENT"} onChange={() => setBookFor("DEPARTMENT")} style={{ accentColor: "#92E4BA" }} />
+                  <input type="radio" checked={bookFor === "DEPARTMENT"} onChange={() => setBookFor("DEPARTMENT")} style={{ accentColor: "#6ecfa3" }} />
                   Department
                 </label>
               </div>
@@ -463,7 +465,7 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
                 padding: "11px",
                 borderRadius: "9px",
                 border: "none",
-                backgroundColor: "#92E4BA",
+                backgroundColor: "#6ecfa3",
                 color: "#1a4a2e",
                 fontWeight: 700,
                 cursor: "pointer",
@@ -598,7 +600,7 @@ export default function BookingsClient({ bookableAssets, initialBookings, users,
 
                   <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
                     <button type="button" onClick={() => setShowReschedule(false)} style={{ flex: 1, padding: "7px", border: "1px solid #d1d5db", background: "transparent", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}>Cancel</button>
-                    <button type="submit" style={{ flex: 2, padding: "7px", background: "#92E4BA", color: "#1a4a2e", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>Confirm Reschedule</button>
+                    <button type="submit" style={{ flex: 2, padding: "7px", background: "#6ecfa3", color: "#1a4a2e", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>Confirm Reschedule</button>
                   </div>
                 </form>
               )}

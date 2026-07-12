@@ -67,8 +67,8 @@ export default function DepartmentHeadDashboard({ deptName, stats, assets, emplo
                     <AreaChart data={generateTrend(typeof kpi.value === "number" ? kpi.value : 5)}>
                       <defs>
                         <linearGradient id={`gradH-${i}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={kpi.title === "Asset Value" ? "#f59e0b" : "#92E4BA"} stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor={kpi.title === "Asset Value" ? "#f59e0b" : "#92E4BA"} stopOpacity={0}/>
+                          <stop offset="5%" stopColor={kpi.title === "Asset Value" ? "#f59e0b" : "#6ecfa3"} stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor={kpi.title === "Asset Value" ? "#f59e0b" : "#6ecfa3"} stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <Area type="monotone" dataKey="v" stroke="none" fill={`url(#gradH-${i})`} />
@@ -94,7 +94,7 @@ export default function DepartmentHeadDashboard({ deptName, stats, assets, emplo
               <h2 className="text-lg font-bold text-[#111827]">Department Assets</h2>
               <p className="text-sm text-[#6B7280]">Recently allocated equipment</p>
             </div>
-            <Link href="/dashboard/assets" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+            <Link href="/dashboard/assets" className="text-sm font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors flex items-center gap-1">
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -145,7 +145,7 @@ export default function DepartmentHeadDashboard({ deptName, stats, assets, emplo
               <h2 className="text-lg font-bold text-[#111827]">Department Team</h2>
               <p className="text-sm text-[#6B7280]">Active staff members</p>
             </div>
-            <Link href="/dashboard/organization" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+            <Link href="/dashboard/organization" className="text-sm font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors flex items-center gap-1">
               Manage <ArrowRight size={14} />
             </Link>
           </div>
@@ -168,7 +168,7 @@ export default function DepartmentHeadDashboard({ deptName, stats, assets, emplo
                     <tr key={emp.id} className="hover:bg-[#FAFAFA] transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#92E4BA] to-[#3b82f6] flex items-center justify-center text-black font-bold text-xs shadow-sm">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6ecfa3] to-[#3b82f6] flex items-center justify-center text-black font-bold text-xs shadow-sm">
                             {emp.name.charAt(0)}
                           </div>
                           <span className="font-semibold text-[#111827]">{emp.name}</span>

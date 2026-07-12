@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { fmtDate } from "@/lib/utils";
 import {
   Boxes, BadgeCheck, AlertTriangle, RefreshCw, Wrench,
   Trash2, ArrowRight, PlusCircle, TrendingUp, TrendingDown,
@@ -20,8 +21,6 @@ interface Props {
   };
   nearRetirementList: any[];
 }
-
-const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA");
 
 const generateTrend = (base: number, up: boolean) =>
   Array.from({ length: 7 }, (_, i) => ({
@@ -98,7 +97,7 @@ const kpiConfig = (stats: Props["stats"]) => [
 ];
 
 const quickActions = [
-  { href: "/dashboard/assets", label: "Register New Asset", desc: "Add asset to inventory", icon: PlusCircle, color: "text-[#92E4BA]" },
+  { href: "/dashboard/assets", label: "Register New Asset", desc: "Add asset to inventory", icon: PlusCircle, color: "text-[#6ecfa3]" },
   { href: "/dashboard/allocations", label: "Allocate Asset", desc: "Assign to staff or dept", icon: BadgeCheck, color: "text-indigo-400" },
   { href: "/dashboard/allocations", label: "Process Return", desc: "Mark asset as returned", icon: RefreshCw, color: "text-amber-400" },
   { href: "/dashboard/maintenance", label: "Approve Maintenance", desc: "Review pending tickets", icon: Wrench, color: "text-purple-400" },
@@ -199,7 +198,7 @@ export default function ManagerDashboard({ stats, nearRetirementList }: Props) {
               <h2 className="text-lg font-bold text-[#111827]">Retirement Queue Preview</h2>
               <p className="text-sm text-[#6B7280]">Assets requiring replacement evaluation</p>
             </div>
-            <Link href="/dashboard/assets?filter=retirement" className="text-sm font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors flex items-center gap-1">
+            <Link href="/dashboard/assets?filter=retirement" className="text-sm font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors flex items-center gap-1">
               View All <ArrowRight size={14} />
             </Link>
           </div>

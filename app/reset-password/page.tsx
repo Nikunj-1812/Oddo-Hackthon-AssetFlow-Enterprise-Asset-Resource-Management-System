@@ -86,7 +86,7 @@ function ResetPasswordForm() {
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-          <div style={{ borderBottom: `1.5px solid ${passFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+          <div style={{ borderBottom: `1.5px solid ${passFocus ? "#6ecfa3" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
             <input
               name="password"
               type="password"
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
             disabled={loading || !token}
             style={{
               width: "100%",
-              backgroundColor: (loading || !token) ? "#aef3d0" : (btnHovered ? "#7cd4a5" : "#92E4BA"),
+              backgroundColor: (loading || !token) ? "#aef3d0" : (btnHovered ? "#53ba8d" : "#6ecfa3"),
               color: "#1e293b",
               borderRadius: "25px",
               padding: "11px",

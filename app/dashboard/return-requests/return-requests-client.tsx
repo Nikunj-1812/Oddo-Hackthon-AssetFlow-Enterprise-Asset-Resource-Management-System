@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { approveReturnRequest, rejectReturnRequest } from "@/features/allocations/actions";
 import { CheckCircle2, XCircle, Clock, AlertTriangle, FileText, Check, X, ShieldCheck } from "lucide-react";
 
@@ -25,26 +26,26 @@ export default function ReturnRequestsClient({ initialRequests, isManager }: Pro
 
     const res = await approveReturnRequest(selectedRequest.id, condition, notes);
     if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
       setSubmitting(false);
     } else {
-      alert("Return request approved and verified!");
-      window.location.reload();
+      toast.success("Return request approved and verified!");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
   const handleReject = async (requestId: string) => {
     const comments = prompt("Enter comments/reasons for rejection:") || "";
     if (!comments.trim()) {
-      alert("Rejection reason is required.");
+      toast.error("Rejection reason is required.");
       return;
     }
     const res = await rejectReturnRequest(requestId, comments);
     if (res.error) {
-      alert(res.error);
+      toast.error(res.error);
     } else {
-      alert("Return request rejected.");
-      window.location.reload();
+      toast.success("Return request rejected.");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -167,7 +168,7 @@ export default function ReturnRequestsClient({ initialRequests, isManager }: Pro
 
               <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
                 <button type="button" onClick={() => setSelectedRequest(null)} style={{ flex: 1, padding: "8px", border: "1px solid #d1d5db", borderRadius: "6px", cursor: "pointer", fontSize: "0.8rem" }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ flex: 2, padding: "8px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>
+                <button type="submit" disabled={submitting} style={{ flex: 2, padding: "8px", border: "none", background: "#6ecfa3", color: "#1a4a2e", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>
                   {submitting ? "Processing check-in..." : "Approve & Check-in"}
                 </button>
               </div>

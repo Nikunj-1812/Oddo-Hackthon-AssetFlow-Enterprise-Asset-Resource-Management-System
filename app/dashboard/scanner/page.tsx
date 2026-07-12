@@ -167,7 +167,7 @@ export default function QRScannerPage() {
               <div style={{ position: "relative", width: "100%", height: "300px", borderRadius: "12px", background: "#000000", overflow: "hidden" }}>
                 <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <canvas ref={canvasRef} style={{ display: "none" }} />
-                <div style={{ position: "absolute", inset: "25px", border: "2px dashed #92E4BA", borderRadius: "8px", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", inset: "25px", border: "2px dashed #6ecfa3", borderRadius: "8px", pointerEvents: "none" }} />
                 <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.6)", color: "#ffffff", fontSize: "0.68rem", padding: "4px 8px", borderRadius: "4px", fontWeight: 600 }}>
                   Center QR code in scanner view
                 </div>

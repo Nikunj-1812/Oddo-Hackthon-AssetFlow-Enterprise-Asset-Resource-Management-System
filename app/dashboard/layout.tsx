@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import HeaderActions from "./header-actions";
 import SidebarNavClient from "./sidebar-nav-client";
+import SearchBar from "./components/search-bar";
 import {
   LayoutDashboard,
   Boxes,
@@ -36,14 +37,6 @@ const sidebarLinks: SidebarLink[] = [
     label: "Dashboard",
     icon: LayoutDashboard,
     iconName: "LayoutDashboard",
-    roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
-    section: "Overview",
-  },
-  {
-    href: "/dashboard/notifications",
-    label: "Notification Center",
-    icon: Bell,
-    iconName: "Bell",
     roles: ["ADMIN", "ASSET_MANAGER", "DEPARTMENT_HEAD", "EMPLOYEE"],
     section: "Overview",
   },
@@ -170,7 +163,7 @@ export default async function DashboardLayout({
       <aside className="w-64 border-r border-[#E5E7EB] bg-white flex flex-col fixed inset-y-0 z-20">
         {/* Logo */}
         <Link href="/dashboard" className="h-16 flex items-center gap-2 px-6 border-b border-[#E5E7EB] hover:bg-[#FAFAFA] transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-[#92E4BA] flex items-center justify-center shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-[#6ecfa3] flex items-center justify-center shadow-sm">
             <Zap size={18} className="text-[#111827] fill-[#111827]" />
           </div>
           <span className="font-bold text-lg tracking-tight text-[#111827]">AssetFlow</span>
@@ -192,7 +185,7 @@ export default async function DashboardLayout({
         {/* Footer */}
         <div className="border-t border-[#E5E7EB] p-4 bg-[#FAFAFA]/50">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#92E4BA] to-[#3b82f6] flex items-center justify-center text-black font-bold text-sm shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6ecfa3] to-[#3b82f6] flex items-center justify-center text-black font-bold text-sm shadow-sm">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col flex-1 min-w-0">
@@ -226,20 +219,7 @@ export default async function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 ml-64">
         {/* Top Bar */}
         <header className="h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm shadow-black/5">
-          <div className="flex items-center w-full max-w-md relative group">
-            <Search size={16} className="absolute left-3 text-[#9CA3AF] group-focus-within:text-[#92E4BA] transition-colors" />
-            <input
-              type="text"
-              placeholder="Search assets, staff, bookings..."
-              className="w-full bg-[#FAFAFA] border border-[#E5E7EB] rounded-lg pl-10 pr-12 py-2 text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#92E4BA]/50 focus:border-[#92E4BA] transition-all shadow-sm"
-              readOnly
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-              <span className="text-[10px] font-bold text-[#6B7280] bg-white border border-[#E5E7EB] px-1.5 py-0.5 rounded shadow-sm">
-                ⌘K
-              </span>
-            </div>
-          </div>
+          <SearchBar />
 
           <HeaderActions />
         </header>

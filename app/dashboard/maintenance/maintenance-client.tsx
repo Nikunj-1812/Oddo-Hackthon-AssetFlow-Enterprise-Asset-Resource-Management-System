@@ -1,9 +1,7 @@
 "use client";
 
-// Locale-fixed date formatter — prevents SSR/client hydration mismatches
-const fmtDate = (d: string | Date) =>
-  new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD, always consistent
-
+import { toast } from "sonner";
+import { fmtDate } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import {
   DndContext,
@@ -28,6 +26,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+import type { RequestStatus } from "@prisma/client";
 import {
   createMaintenanceRequest,
   updateMaintenanceStatus,
@@ -58,118 +57,7 @@ interface Props {
   isManager: boolean;
 }
 
-const COLUMNS = [
-  { id: "PENDING", label: "Pending", color: "#f59e0b", dot: "#f59e0b" },
-  { id: "APPROVED", label: "Approved", color: "#6366f1", dot: "#6366f1" },
-  { id: "TECHNICIAN_ASSIGNED", label: "Tech Assigned", color: "#3b82f6", dot: "#3b82f6" },
-  { id: "IN_PROGRESS", label: "In Progress", color: "#8b5cf6", dot: "#8b5cf6" },
-  { id: "RESOLVED", label: "Resolved", color: "#10b981", dot: "#10b981" },
-];
-
-const priorityConfig: Record<string, { bg: string; color: string; icon: any }> = {
-  LOW: { bg: "#f3f4f6", color: "#4b5563", icon: Clock },
-  MEDIUM: { bg: "#fffbeb", color: "#b45309", icon: AlertTriangle },
-  HIGH: { bg: "#ffedd5", color: "#c2410c", icon: AlertCircle },
-  CRITICAL: { bg: "#fee2e2", color: "#991b1b", icon: ShieldAlert },
-};
-
-// --- Sortable Card Component ---
-function KanbanCard({ req, style, isDragging, isOverlay, ...props }: any) {
-  const pConfig = priorityConfig[req.priority] || priorityConfig.LOW;
-  const PIcon = pConfig.icon;
-
-  return (
-    <div
-      style={style}
-      className={`kanban-card ${isDragging || isOverlay ? "kanban-card-dragging" : ""}`}
-      {...props}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "2px 8px", borderRadius: "20px", background: pConfig.bg, color: pConfig.color, fontSize: "0.68rem", fontWeight: 700 }}>
-          <PIcon size={10} />
-          {req.priority}
-        </span>
-        <ChevronRight size={13} color="#d1d5db" />
-      </div>
-      <div>
-        <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#111827", marginBottom: "2px" }}>
-          {req.asset?.name}
-        </div>
-        <div style={{ fontSize: "0.68rem", color: "#9ca3af", fontFamily: "monospace" }}>
-          {req.asset?.tag}
-        </div>
-      </div>
-      <p style={{ margin: 0, fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 }}>
-        {req.description?.slice(0, 80)}{req.description?.length > 80 ? "..." : ""}
-      </p>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "8px", borderTop: "1px solid #f9fafb" }}>
-        {req.assignedTo && (
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.68rem", color: "#6366f1" }}>
-            <User size={10} />
-            {req.assignedTo}
-          </div>
-        )}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px", fontSize: "0.68rem", color: "#9ca3af" }}>
-          <Calendar size={10} />
-          {fmtDate(req.createdAt)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Sortable Card Wrapper Component ---
-function SortableCard({ req, onClick }: { req: any; onClick?: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: req.id,
-    data: { type: "Card", request: req },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-    cursor: isDragging ? "grabbing" : "grab",
-  };
-
-  return (
-    <KanbanCard
-      req={req}
-      ref={setNodeRef}
-      style={style}
-      isDragging={isDragging}
-      onClick={(e: any) => {
-        if (isDragging) return;
-        onClick?.();
-      }}
-      {...attributes}
-      {...listeners}
-    />
-  );
-}
-
-// --- Column Droppable Component ---
-function KanbanColumnDroppable({ col, cards, children }: { col: any, cards: any[], children: React.ReactNode }) {
-  const { setNodeRef } = useSortable({
-    id: col.id,
-    data: { type: "Column", status: col.id },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="kanban-cards-area"
-      style={{
-        borderRadius: "10px",
-        minHeight: "80px",
-        padding: "4px",
-        transition: "background 0.2s ease",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+import { COLUMNS, KanbanCard, SortableCard, KanbanColumnDroppable, priorityConfig } from "./components/kanban-components";
 
 export default function MaintenanceClient({ assets, initialRequests, isManager }: Props) {
   const [requests, setRequests] = useState(initialRequests);
@@ -178,6 +66,37 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
+
+  const moveCard = async (requestId: string, currentStatus: string, direction: "prev" | "next") => {
+    const currentIndex = COLUMNS.findIndex(col => col.id === currentStatus);
+    if (currentIndex === -1) return;
+    
+    const targetIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= COLUMNS.length) return;
+    
+    const nextStatus = COLUMNS[targetIndex].id;
+    
+    // 1. Optimistic UI update
+    setRequests(prev => prev.map(req => {
+      if (req.id === requestId) {
+        return { ...req, status: nextStatus };
+      }
+      return req;
+    }));
+    
+    // 2. Perform backend update
+    const result = await updateMaintenanceStatus(requestId, nextStatus as RequestStatus);
+    if (result?.error) {
+      toast.error(result.error);
+      // rollback on failure
+      setRequests(prev => prev.map(req => {
+        if (req.id === requestId) {
+          return { ...req, status: currentStatus };
+        }
+        return req;
+      }));
+    }
+  };
 
   // Dynamic ticket workflow data loading
   const [ticketPhotos, setTicketPhotos] = useState<any[]>([]);
@@ -242,7 +161,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const handleStatusChange = async (requestId: string, nextStatus: any, techName?: string) => {
     const result = await updateMaintenanceStatus(requestId, nextStatus, techName);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
       window.location.reload(); // Rollback on failure
     }
     // Optimistic UI updates handle the success state, no need to reload
@@ -255,47 +174,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   };
 
   const onDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-    if (activeId === overId) return;
-
-    const isActiveCard = active.data.current?.type === "Card";
-    const isOverCard = over.data.current?.type === "Card";
-    const isOverColumn = over.data.current?.type === "Column";
-
-    if (!isActiveCard) return;
-
-    setRequests((tasks) => {
-      const activeIndex = tasks.findIndex((t) => t.id === activeId);
-      const overIndex = tasks.findIndex((t) => t.id === overId);
-
-      if (isOverCard) {
-        const activeTask = tasks[activeIndex];
-        const overTask = tasks[overIndex];
-
-        if (activeTask.status !== overTask.status) {
-           const newTasks = [...tasks];
-           newTasks[activeIndex] = { ...newTasks[activeIndex], status: overTask.status };
-           return arrayMove(newTasks, activeIndex, overIndex);
-        } else {
-           return arrayMove(tasks, activeIndex, overIndex);
-        }
-      }
-
-      if (isOverColumn) {
-        const newStatus = overId as string;
-        if (tasks[activeIndex].status !== newStatus) {
-           const newTasks = [...tasks];
-           newTasks[activeIndex] = { ...newTasks[activeIndex], status: newStatus };
-           return arrayMove(newTasks, activeIndex, newTasks.length);
-        }
-      }
-
-      return tasks;
-    });
+    // Do nothing during dragging so the original card stays in its source column!
   };
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -304,13 +183,47 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
     const { active, over } = event;
     if (!over) return;
 
-    const activeTask = active.data.current?.request;
+    const activeId = active.id;
+    const overId = over.id;
+
+    const activeTask = requests.find((r) => r.id === activeId);
     if (!activeTask) return;
 
-    const newStatus = requests.find(r => r.id === active.id)?.status;
-    
-    if (newStatus && activeTask.status !== newStatus) {
-       handleStatusChange(active.id as string, newStatus);
+    const isOverCard = over.data.current?.type === "Card";
+    const isOverColumn = over.data.current?.type === "Column";
+
+    let newStatus = activeTask.status;
+
+    if (isOverCard) {
+      const overTask = requests.find((r) => r.id === overId);
+      if (overTask) {
+        newStatus = overTask.status;
+      }
+    } else if (isOverColumn) {
+      newStatus = overId as string;
+    }
+
+    if (newStatus !== activeTask.status) {
+      // Move to a different column
+      setRequests((prevRequests) => {
+        const activeIndex = prevRequests.findIndex((t) => t.id === activeId);
+        const newRequests = [...prevRequests];
+        newRequests[activeIndex] = { ...newRequests[activeIndex], status: newStatus };
+        const overIndex = prevRequests.findIndex((t) => t.id === overId);
+        if (overIndex !== -1) {
+          return arrayMove(newRequests, activeIndex, overIndex);
+        }
+        return newRequests;
+      });
+
+      handleStatusChange(activeId as string, newStatus);
+    } else if (isOverCard && activeId !== overId) {
+      // Reorder within the same column
+      setRequests((prevRequests) => {
+        const activeIndex = prevRequests.findIndex((t) => t.id === activeId);
+        const overIndex = prevRequests.findIndex((t) => t.id === overId);
+        return arrayMove(prevRequests, activeIndex, overIndex);
+      });
     }
   };
 
@@ -366,7 +279,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
             onClick={() => setShowForm(true)}
             style={{
               display: "inline-flex", alignItems: "center", gap: "7px",
-              padding: "9px 18px", background: "#92E4BA", color: "#1a4a2e",
+              padding: "9px 18px", background: "#6ecfa3", color: "#1a4a2e",
               border: "none", borderRadius: "9px",
               fontWeight: 700, fontSize: "0.825rem", cursor: "pointer",
               boxShadow: "0 4px 12px rgba(146,228,186,0.35)",
@@ -416,6 +329,8 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                             key={req.id}
                             req={req}
                             onClick={() => setSelectedCard(req)}
+                            onMovePrev={() => moveCard(req.id, req.status, "prev")}
+                            onMoveNext={() => moveCard(req.id, req.status, "next")}
                           />
                         ))}
                       </KanbanColumnDroppable>
@@ -519,7 +434,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                   const desc = fd.get("photoDesc") as string;
                   if (!url || !desc) return;
                   const res = await addMaintenancePhoto(selectedCard.id, url, desc);
-                  if (res.error) alert(res.error);
+                  if (res.error) toast.error(res.error);
                   else {
                     (e.target as HTMLFormElement).reset();
                     loadTicketDetails(selectedCard.id);
@@ -543,7 +458,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                     {ticketHistory.map((hist) => (
                       <div key={hist.id} style={{ display: "flex", gap: "8px", fontSize: "0.75rem" }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#92E4BA" }} />
+                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#6ecfa3" }} />
                           <div style={{ flex: 1, width: "2px", background: "#e5e7eb" }} />
                         </div>
                         <div style={{ flex: 1 }}>
@@ -567,7 +482,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                   {selectedCard.status === "PENDING" && (
                     <div style={{ display: "flex", gap: "8px" }}>
                       <button onClick={() => { handleStatusChange(selectedCard.id, "REJECTED"); setSelectedCard(null); }} style={{ flex: 1, padding: "10px", border: "1px solid #fee2e2", background: "#fef2f2", color: "#dc2626", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><XCircle size={14} /> Reject</button>
-                      <button onClick={() => { handleStatusChange(selectedCard.id, "APPROVED"); setSelectedCard(null); }} style={{ flex: 1, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircle2 size={14} /> Approve</button>
+                      <button onClick={() => { handleStatusChange(selectedCard.id, "APPROVED"); setSelectedCard(null); }} style={{ flex: 1, padding: "10px", border: "none", background: "#6ecfa3", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><CheckCircle2 size={14} /> Approve</button>
                     </div>
                   )}
                   {selectedCard.status === "APPROVED" && (
@@ -620,7 +535,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                 {success && <div style={{ padding: "10px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: "9px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px" }}><CheckCircle2 size={14} /> Ticket filed successfully!</div>}
                 <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
                   <button type="button" onClick={() => setShowForm(false)} style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                  <button type="submit" disabled={submitting} style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>{submitting ? "Submitting..." : "Submit Report"}</button>
+                  <button type="submit" disabled={submitting} style={{ flex: 2, padding: "10px", border: "none", background: "#6ecfa3", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>{submitting ? "Submitting..." : "Submit Report"}</button>
                 </div>
               </form>
             </div>
@@ -641,7 +556,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
               </div>
               <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
                 <button type="button" onClick={() => setSelectedRequestForTech(null)} style={{ flex: 1, padding: "10px", border: "1px solid #e5e7eb", background: "transparent", borderRadius: "9px", fontWeight: 600, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                <button type="submit" style={{ flex: 2, padding: "10px", border: "none", background: "#92E4BA", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Confirm Assignment</button>
+                <button type="submit" style={{ flex: 2, padding: "10px", border: "none", background: "#6ecfa3", color: "#1a4a2e", borderRadius: "9px", fontWeight: 700, fontSize: "0.825rem", cursor: "pointer", fontFamily: "inherit" }}>Confirm Assignment</button>
               </div>
             </form>
           </div>

@@ -61,7 +61,7 @@ export default function SidebarNavClient({ links, sections }: Props) {
                     href={link.href}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
                       isActive
-                        ? "bg-[#92E4BA]/15 text-[#1a4a2e]"
+                        ? "bg-[#6ecfa3]/15 text-[#1a4a2e]"
                         : "text-[#6B7280] hover:bg-[#FAFAFA] hover:text-[#111827]"
                     }`}
                   >

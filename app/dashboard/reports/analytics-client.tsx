@@ -9,8 +9,69 @@ import {
   TrendingUp, TrendingDown, ClipboardCheck, AlertOctagon, Boxes, Wrench, ShieldCheck,
   CalendarDays, Download, Printer, Search, ArrowRight, ShieldAlert,
   Building2, MapPin, Tag, Briefcase, UserCheck, RefreshCw, BarChart2, Activity,
-  Filter, Calendar, DollarSign, FileSpreadsheet, Sparkles
+  Filter, Calendar, DollarSign, FileSpreadsheet, Sparkles,
+  Inbox, Award, ShieldX, Hourglass, Clock
 } from "lucide-react";
+
+const getInsightIcon = (id: string) => {
+  const size = 15;
+  switch (id) {
+    case "idle":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#f3f4f6", color: "#4b5563" }}>
+          <Inbox size={size} />
+        </div>
+      );
+    case "warranty30":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#fff7ed", color: "#ea580c" }}>
+          <Clock size={size} />
+        </div>
+      );
+    case "warrantyExp":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#fef2f2", color: "#ef4444" }}>
+          <ShieldX size={size} />
+        </div>
+      );
+    case "mntSpike":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#fff7ed", color: "#ea580c" }}>
+          <TrendingUp size={size} />
+        </div>
+      );
+    case "overdue":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#fef2f2", color: "#ef4444" }}>
+          <Hourglass size={size} />
+        </div>
+      );
+    case "nearRet":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#eff6ff", color: "#2563eb" }}>
+          <TrendingDown size={size} />
+        </div>
+      );
+    case "critMnt":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#fef2f2", color: "#dc2626" }}>
+          <AlertOctagon size={size} />
+        </div>
+      );
+    case "topDept":
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#e8faf3", color: "#10b981" }}>
+          <Award size={size} />
+        </div>
+      );
+    default:
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: "#f3f4f6", color: "#6b7280" }}>
+          <Activity size={size} />
+        </div>
+      );
+  }
+};
 
 interface Props {
   totalAssets: number;
@@ -68,7 +129,7 @@ interface Props {
   overdueAllocations: any[];
 }
 
-const COLORS = ["#92E4BA", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#10b981", "#3b82f6"];
+const COLORS = ["#6ecfa3", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#10b981", "#3b82f6"];
 
 export default function AnalyticsClient(props: Props) {
   const [search, setSearch] = useState("");
@@ -125,6 +186,58 @@ export default function AnalyticsClient(props: Props) {
     minWidth: "220px",
     position: "relative" as const,
     overflow: "hidden" as const
+  };
+
+  const getInsightIcon = (id: string) => {
+    const size = 16;
+    switch (id) {
+      case "idle":
+        return <Boxes size={size} style={{ color: "#4b5563" }} />;
+      case "warranty30":
+        return <ShieldCheck size={size} style={{ color: "#2563eb" }} />;
+      case "warrantyExp":
+        return <ShieldAlert size={size} style={{ color: "#d97706" }} />;
+      case "mntSpike":
+        return <Wrench size={size} style={{ color: "#ea580c" }} />;
+      case "overdue":
+        return <CalendarDays size={size} style={{ color: "#ef4444" }} />;
+      case "nearRet":
+        return <TrendingDown size={size} style={{ color: "#7c3aed" }} />;
+      case "critMnt":
+        return <AlertOctagon size={size} style={{ color: "#e11d48" }} />;
+      case "topDept":
+        return <Building2 size={size} style={{ color: "#4f46e5" }} />;
+      default:
+        return <Activity size={size} style={{ color: "#6b7280" }} />;
+    }
+  };
+
+  const getInsightIconBg = (id: string) => {
+    switch (id) {
+      case "idle": return "#f3f4f6";
+      case "warranty30": return "#eff6ff";
+      case "warrantyExp": return "#fffbeb";
+      case "mntSpike": return "#fff7ed";
+      case "overdue": return "#fef2f2";
+      case "nearRet": return "#f5f3ff";
+      case "critMnt": return "#fff5f5";
+      case "topDept": return "#e0e7ff";
+      default: return "#f9fafb";
+    }
+  };
+
+  const getInsightIconBorder = (id: string) => {
+    switch (id) {
+      case "idle": return "#e5e7eb";
+      case "warranty30": return "#bfdbfe";
+      case "warrantyExp": return "#fde68a";
+      case "mntSpike": return "#ffedd5";
+      case "overdue": return "#fee2e2";
+      case "nearRet": return "#ddd6fe";
+      case "critMnt": return "#feb2b2";
+      case "topDept": return "#c7d2fe";
+      default: return "#f3f4f6";
+    }
   };
 
   const trendBadge = (pct: number) => {
@@ -215,38 +328,8 @@ export default function AnalyticsClient(props: Props) {
       {/* ───────────────── OVERVIEW TAB ───────────────── */}
       {activeTab === "overview" && (
         <>
-          {/* Layer 1: KPI Cards */}
+          {/* KPI Cards Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1.25rem" }}>
-            <div style={cardStyle}>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#6b7280" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>Total Assets</span>
-                <Boxes size={14} />
-              </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>{props.totalAssets}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-                <span style={{ fontSize: "0.7rem", color: "#9ca3af" }}>Active Inventory</span>
-                <div style={{ width: "60px", height: "18px" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={props.sparkAssets}>
-                      <Line type="monotone" dataKey="v" stroke="#92E4BA" strokeWidth={1.5} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            <div style={cardStyle}>
-              <div style={{ display: "flex", justifyContent: "space-between", color: "#6b7280" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>Asset Value</span>
-                <DollarSign size={14} />
-              </div>
-              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#111827" }}>₹{props.totalAssetValue.toLocaleString()}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-                <span style={{ fontSize: "0.7rem", color: "#9ca3af" }}>Capital Value</span>
-                <span style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 600 }}>Net Book Value</span>
-              </div>
-            </div>
-
             <div style={cardStyle}>
               <div style={{ display: "flex", justifyContent: "space-between", color: "#6b7280" }}>
                 <span style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>Available Assets</span>
@@ -346,15 +429,15 @@ export default function AnalyticsClient(props: Props) {
                   <AreaChart data={filteredRegTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#92E4BA" stopOpacity={0.6}/>
-                        <stop offset="95%" stopColor="#92E4BA" stopOpacity={0.0}/>
+                        <stop offset="5%" stopColor="#6ecfa3" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#6ecfa3" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                     <YAxis tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                     <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, "Capital Value"]} />
-                    <Area type="monotone" dataKey="costAdded" stroke="#7cd4a5" fillOpacity={1} fill="url(#colorCost)" name="Value (₹)" />
+                    <Area type="monotone" dataKey="costAdded" stroke="#53ba8d" fillOpacity={1} fill="url(#colorCost)" name="Value (₹)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -454,7 +537,7 @@ export default function AnalyticsClient(props: Props) {
                     <PolarGrid stroke="#f3f4f6" />
                     <PolarAngleAxis dataKey="name" style={{ fontSize: "0.75rem", fill: "#6b7280" }} />
                     <PolarRadiusAxis angle={30} domain={[0, "auto"]} style={{ fontSize: "0.65rem" }} />
-                    <Radar name="Assets count" dataKey="value" stroke="#10b981" fill="#92E4BA" fillOpacity={0.5} />
+                    <Radar name="Assets count" dataKey="value" stroke="#10b981" fill="#6ecfa3" fillOpacity={0.5} />
                     <Tooltip />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -471,8 +554,8 @@ export default function AnalyticsClient(props: Props) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
               {props.aiInsights.map((ins) => (
-                <div key={ins.id} style={{ display: "flex", gap: "12px", padding: "12px", background: "#fafafa", borderRadius: "10px", border: "1px solid #f0f0f0" }}>
-                  <div style={{ fontSize: "1.25rem" }}>{ins.icon}</div>
+                <div key={ins.id} style={{ display: "flex", gap: "12px", padding: "12px", background: "#ffffff", borderRadius: "10px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "8px", background: getInsightIconBg(ins.id), border: `1px solid ${getInsightIconBorder(ins.id)}`, flexShrink: 0 }}>{getInsightIcon(ins.id)}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#111827" }}>{ins.title}</span>
@@ -532,7 +615,7 @@ export default function AnalyticsClient(props: Props) {
                     <XAxis dataKey="name" style={{ fontSize: "0.7rem" }} />
                     <YAxis style={{ fontSize: "0.7rem" }} />
                     <Tooltip />
-                    <Bar dataKey={compType === "dept" ? "assets" : "count"} fill="#92E4BA" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey={compType === "dept" ? "assets" : "count"} fill="#6ecfa3" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -598,7 +681,7 @@ export default function AnalyticsClient(props: Props) {
                 onClick={() => setActiveReport(rep)}
                 style={{
                   padding: "10px 14px", border: "none", borderRadius: "8px", textAlign: "left", fontSize: "0.8rem", fontWeight: activeReport === rep ? 700 : 500,
-                  background: activeReport === rep ? "#92E4BA20" : "transparent", color: activeReport === rep ? "#1a4a2e" : "#4b5563", cursor: "pointer",
+                  background: activeReport === rep ? "#6ecfa320" : "transparent", color: activeReport === rep ? "#1a4a2e" : "#4b5563", cursor: "pointer",
                   transition: "all 0.15s ease"
                 }}
               >

@@ -115,10 +115,8 @@ export async function updateMaintenanceStatus(
       await (tx as any).maintenanceHistory.create({
         data: {
           requestId,
-          userId: operator.id!,
-          userName: operator.name,
-          prevStatus: request.status,
-          nextStatus: nextStatus,
+          status: nextStatus,
+          actorName: operator.name || "Unknown",
           comments: technicianName ? `Technician assigned: ${technicianName}` : `Status updated to ${nextStatus}`
         }
       });

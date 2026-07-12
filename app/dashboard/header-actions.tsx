@@ -126,7 +126,7 @@ export default function HeaderActions() {
           onClick={() => setNotifOpen(!notifOpen)}
           className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
             notifOpen 
-              ? "bg-[#92E4BA]/10 border-[#92E4BA]/30 text-[#207a4a]" 
+              ? "bg-[#6ecfa3]/10 border-[#6ecfa3]/30 text-[#207a4a]" 
               : "bg-white border-[#E5E7EB] text-[#6B7280] hover:bg-[#FAFAFA] hover:text-[#111827]"
           }`}
         >
@@ -177,7 +177,7 @@ export default function HeaderActions() {
                       <div
                         key={notif.id}
                         onClick={() => handleMarkRead(notif.id)}
-                        className={`p-4 hover:bg-[#FAFAFA] transition-colors relative group cursor-pointer ${notif.read ? "opacity-60" : "bg-[#92E4BA]/5"}`}
+                        className={`p-4 hover:bg-[#FAFAFA] transition-colors relative group cursor-pointer ${notif.read ? "opacity-60" : "bg-[#6ecfa3]/5"}`}
                       >
                         <div className="flex gap-3">
                           <div className={`shrink-0 w-2 h-2 mt-1.5 rounded-full ${!notif.read ? "bg-red-500" : "bg-transparent"}`} />
@@ -213,7 +213,7 @@ export default function HeaderActions() {
                 )}
               </div>
               <div className="p-3 border-t border-[#E5E7EB] bg-[#FAFAFA]/50 text-center flex justify-between px-4">
-                <Link href="/dashboard/notifications" className="text-xs font-semibold text-[#111827] hover:text-[#92E4BA] transition-colors">
+                <Link href="/dashboard/notifications" className="text-xs font-semibold text-[#111827] hover:text-[#6ecfa3] transition-colors">
                   View Full Center
                 </Link>
                 <button onClick={() => { setSettingsOpen(true); setNotifOpen(false); }} className="text-xs font-semibold text-[#6B7280] hover:text-[#111827] flex items-center gap-1">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { 
   createDepartment, updateDepartment, deleteDepartment,
   createCategory, updateCategory, deleteCategory,
@@ -116,10 +117,10 @@ export default function TabsClient({ departments, categories, employees }: Props
     if (!confirm("Are you sure you want to delete this department? This action checks active personnel or allocated assets first.")) return;
     const result = await deleteDepartment(deptId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      alert("Department deleted successfully.");
-      window.location.reload();
+      toast.success("Department deleted successfully.");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -152,10 +153,10 @@ export default function TabsClient({ departments, categories, employees }: Props
     if (!confirm("Are you sure you want to delete this category? This action validates that no registered assets are linked to it.")) return;
     const result = await deleteCategory(catId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
-      alert("Category deleted successfully.");
-      window.location.reload();
+      toast.success("Category deleted successfully.");
+      setTimeout(() => window.location.reload(), 1000);
     }
   };
 
@@ -193,7 +194,7 @@ export default function TabsClient({ departments, categories, employees }: Props
               padding: "12px 4px",
               border: "none",
               background: "transparent",
-              borderBottom: activeTab === tab ? "2px solid #7cd4a5" : "2px solid transparent",
+              borderBottom: activeTab === tab ? "2px solid #53ba8d" : "2px solid transparent",
               color: activeTab === tab ? "#111827" : "#6b7280",
               fontWeight: 700,
               fontSize: "0.85rem",
@@ -235,7 +236,7 @@ export default function TabsClient({ departments, categories, employees }: Props
                   padding: "11px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "#92E4BA",
+                  backgroundColor: "#6ecfa3",
                   color: "#1e293b",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -320,7 +321,7 @@ export default function TabsClient({ departments, categories, employees }: Props
                   padding: "11px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "#92E4BA",
+                  backgroundColor: "#6ecfa3",
                   color: "#1e293b",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -442,7 +443,7 @@ export default function TabsClient({ departments, categories, employees }: Props
                     padding: "10px 24px",
                     borderRadius: "8px",
                     border: "none",
-                    backgroundColor: "#92E4BA",
+                    backgroundColor: "#6ecfa3",
                     color: "#1e293b",
                     fontWeight: 700,
                     cursor: "pointer",
@@ -531,7 +532,7 @@ export default function TabsClient({ departments, categories, employees }: Props
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1rem" }}>
                 <button type="button" onClick={() => setShowEditDeptModal(false)} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #d1d5db", background: "transparent", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ padding: "8px 24px", borderRadius: "8px", border: "none", backgroundColor: "#92E4BA", color: "#1e293b", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>Save</button>
+                <button type="submit" disabled={submitting} style={{ padding: "8px 24px", borderRadius: "8px", border: "none", backgroundColor: "#6ecfa3", color: "#1e293b", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>Save</button>
               </div>
             </form>
           </div>
@@ -569,7 +570,7 @@ export default function TabsClient({ departments, categories, employees }: Props
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "1rem" }}>
                 <button type="button" onClick={() => setShowEditCatModal(false)} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #d1d5db", background: "transparent", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>Cancel</button>
-                <button type="submit" disabled={submitting} style={{ padding: "8px 24px", borderRadius: "8px", border: "none", backgroundColor: "#92E4BA", color: "#1e293b", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>Save</button>
+                <button type="submit" disabled={submitting} style={{ padding: "8px 24px", borderRadius: "8px", border: "none", backgroundColor: "#6ecfa3", color: "#1e293b", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" }}>Save</button>
               </div>
             </form>
           </div>

@@ -21,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { fmtDate } from "@/lib/utils";
 
 interface Props {
   initialUsers: any[];
@@ -32,10 +33,6 @@ const roleColors: Record<string, { bg: string; color: string }> = {
   ASSET_MANAGER: { bg: "#eff6ff", color: "#1d4ed8" },
   DEPARTMENT_HEAD: { bg: "#fef3c7", color: "#92400e" },
   EMPLOYEE: { bg: "#ecfdf5", color: "#047857" },
-};
-
-const fmtDate = (d: string | Date) => {
-  return new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD format
 };
 
 export default function OrganizationClient({ initialUsers, departments }: Props) {
@@ -263,7 +260,7 @@ export default function OrganizationClient({ initialUsers, departments }: Props)
                                 width: "32px",
                                 height: "32px",
                                 borderRadius: "50%",
-                                background: "#92E4BA",
+                                background: "#6ecfa3",
                                 color: "#1a4a2e",
                                 display: "flex",
                                 alignItems: "center",
@@ -401,7 +398,7 @@ export default function OrganizationClient({ initialUsers, departments }: Props)
                       ) : (
                         dept.employees.slice(0, 3).map((e: any) => (
                           <div key={e.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#92E4BA" }} />
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6ecfa3" }} />
                             <span style={{ fontSize: "0.78rem", color: "#374151", fontWeight: 500 }}>
                               {e.name}
                             </span>

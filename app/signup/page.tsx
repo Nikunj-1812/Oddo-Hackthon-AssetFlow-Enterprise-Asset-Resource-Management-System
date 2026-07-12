@@ -17,9 +17,9 @@ function SocialIcon({ label, children }: { label: string; children: React.ReactN
         justifyContent: "center",
         width: "38px",
         height: "38px",
-        border: `1.5px solid ${hovered ? "#92E4BA" : "#d1d5db"}`,
+        border: `1.5px solid ${hovered ? "#6ecfa3" : "#d1d5db"}`,
         borderRadius: "8px",
-        color: hovered ? "#7cd4a5" : "#6b7280",
+        color: hovered ? "#53ba8d" : "#6b7280",
         backgroundColor: "#ffffff",
         cursor: "pointer",
         textDecoration: "none",
@@ -99,7 +99,7 @@ export default function SignupPage() {
         <div
           style={{
             flex: 1,
-            background: "linear-gradient(135deg, #92E4BA 0%, #7cd4a5 100%)",
+            background: "linear-gradient(135deg, #6ecfa3 0%, #53ba8d 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -265,7 +265,7 @@ export default function SignupPage() {
               }}
               onSubmit={handleSubmit}
             >
-              <div style={{ borderBottom: `1.5px solid ${nameFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${nameFocus ? "#6ecfa3" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-name"
                   name="name"
@@ -277,7 +277,7 @@ export default function SignupPage() {
                   onBlur={() => setNameFocus(false)}
                 />
               </div>
-              <div style={{ borderBottom: `1.5px solid ${emailFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${emailFocus ? "#6ecfa3" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-email"
                   name="email"
@@ -289,7 +289,7 @@ export default function SignupPage() {
                   onBlur={() => setEmailFocus(false)}
                 />
               </div>
-              <div style={{ borderBottom: `1.5px solid ${passFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${passFocus ? "#6ecfa3" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-password"
                   name="password"
@@ -307,7 +307,7 @@ export default function SignupPage() {
                 disabled={loading}
                 style={{
                   width: "100%",
-                  backgroundColor: loading ? "#aef3d0" : (btnHovered ? "#7cd4a5" : "#92E4BA"),
+                  backgroundColor: loading ? "#aef3d0" : (btnHovered ? "#53ba8d" : "#6ecfa3"),
                   color: "#1e293b",
                   borderRadius: "25px",
                   padding: "11px",

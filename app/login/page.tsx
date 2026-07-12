@@ -208,7 +208,7 @@ export default function LoginPage() {
                   fontSize: "0.85rem",
                   transition: "all 0.2s"
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#92E4BA"; e.currentTarget.style.color = "#1a7a4e"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#6ecfa3"; e.currentTarget.style.color = "#1a7a4e"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#d1d5db"; e.currentTarget.style.color = "#4b5563"; }}
               >
                 View Demo Accounts
