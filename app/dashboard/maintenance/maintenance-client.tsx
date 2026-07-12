@@ -1,5 +1,9 @@
 "use client";
 
+// Locale-fixed date formatter — prevents SSR/client hydration mismatches
+const fmtDate = (d: string | Date) =>
+  new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD, always consistent
+
 import { useState } from "react";
 import {
   DragDropContext,
@@ -109,7 +113,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
     const rows = requests.map((r) => [
       r.asset.tag, r.asset.name, r.raisedBy?.name || "Staff",
       r.description, r.priority, r.status, r.assignedTo || "-",
-      new Date(r.createdAt).toLocaleDateString(),
+      fmtDate(r.createdAt),
     ]);
     const csv = "data:text/csv;charset=utf-8," +
       [headers.join(","), ...rows.map((e) => e.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -265,7 +269,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
                                     )}
                                     <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px", fontSize: "0.68rem", color: "#9ca3af" }}>
                                       <Calendar size={10} />
-                                      {new Date(req.createdAt).toLocaleDateString()}
+                                      {fmtDate(req.createdAt)}
                                     </div>
                                   </div>
                                 </div>
@@ -360,7 +364,7 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {[
                   { label: "Reported By", value: selectedCard.raisedBy?.name || "Staff" },
-                  { label: "Date Raised", value: new Date(selectedCard.createdAt).toLocaleDateString() },
+                  { label: "Date Raised", value: fmtDate(selectedCard.createdAt) },
                   { label: "Asset Location", value: selectedCard.asset?.location || "—" },
                   { label: "Technician", value: selectedCard.assignedTo || "Not assigned" },
                 ].map((item) => (
