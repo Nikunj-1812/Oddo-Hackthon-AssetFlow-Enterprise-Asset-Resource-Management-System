@@ -54,7 +54,7 @@ export default function ReportsClient({
                 <XAxis dataKey="month" tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <YAxis tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <Tooltip />
-                <Area type="monotone" dataKey="costAdded" stroke="#7cd4a5" fillOpacity={1} fill="url(#colorCost)" name="Acquisitions Cost ($)" />
+                <Area type="monotone" dataKey="costAdded" stroke="#7cd4a5" fillOpacity={1} fill="url(#colorCost)" name="Acquisitions Cost (₹)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -115,8 +115,8 @@ export default function ReportsClient({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="name" tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
                 <YAxis tickLine={false} axisLine={false} style={{ fontSize: "0.75rem", fill: "#9ca3af" }} />
-                <Tooltip formatter={(value: any) => [value !== undefined ? `$${Number(value).toLocaleString()}` : "$0", "Total Value"]} />
-                <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} name="Inventory Value ($)" />
+                <Tooltip formatter={(value: any) => [value !== undefined ? `₹${Number(value).toLocaleString()}` : "₹0", "Total Value"]} />
+                <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} name="Inventory Value (₹)" />
               </BarChart>
             </ResponsiveContainer>
           </div>

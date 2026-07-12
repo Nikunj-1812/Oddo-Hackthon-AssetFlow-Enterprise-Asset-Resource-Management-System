@@ -4,7 +4,7 @@
 const fmtDate = (d: string | Date) =>
   new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD, always consistent
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -62,6 +62,11 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
   const [showForm, setShowForm] = useState(false);
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
   const [selectedRequestForTech, setSelectedRequestForTech] = useState<any | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -166,7 +171,8 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
 
       {/* Kanban Board */}
       <div className="animate-fade-up delay-100">
-        <DragDropContext onDragEnd={onDragEnd}>
+        {isMounted ? (
+          <DragDropContext onDragEnd={onDragEnd}>
           <div className="kanban-board">
             {COLUMNS.map((col) => {
               const cards = getCardsByStatus(col.id);
@@ -286,6 +292,13 @@ export default function MaintenanceClient({ assets, initialRequests, isManager }
             })}
           </div>
         </DragDropContext>
+        ) : (
+          <div className="kanban-board">
+            <div style={{ padding: "40px", textAlign: "center", width: "100%", color: "#9ca3af" }}>
+              Loading board...
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── CARD DETAIL SHEET ── */}

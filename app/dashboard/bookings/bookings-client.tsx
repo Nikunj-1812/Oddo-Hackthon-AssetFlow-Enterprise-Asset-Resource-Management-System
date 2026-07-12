@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { createBooking, cancelBooking } from "@/features/bookings/actions";
 import { CalendarDays, Clock, ShieldAlert, BadgeInfo, CheckCircle2, User, HelpCircle, XCircle, FileSpreadsheet } from "lucide-react";
 
@@ -19,6 +21,16 @@ export default function BookingsClient({ bookableAssets, initialBookings }: Prop
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  const [minDate, setMinDate] = useState<Date>(new Date());
+  
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    setMinDate(now);
+  }, []);
 
   const handleBook = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,14 +118,45 @@ export default function BookingsClient({ bookableAssets, initialBookings }: Prop
               </select>
             </div>
 
+            <input type="hidden" name="startTime" value={startDate ? startDate.toISOString() : ""} />
+            <input type="hidden" name="endTime" value={endDate ? endDate.toISOString() : ""} />
+
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>Start Time</label>
-              <input name="startTime" type="datetime-local" required style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", color: "#374151", outline: "none" }} />
+              <DatePicker
+                selected={startDate}
+                onChange={(date) => setStartDate(date as Date)}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="Time"
+                dateFormat="MMMM d, yyyy h:mm aa"
+                minDate={minDate}
+                placeholderText="Select start date and time"
+                required
+                className="auth-input"
+                wrapperClassName="w-full"
+                customInput={<input style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", color: "#374151", outline: "none" }} />}
+              />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               <label style={{ fontSize: "0.8rem", color: "#4b5563", fontWeight: 600 }}>End Time</label>
-              <input name="endTime" type="datetime-local" required style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", color: "#374151", outline: "none" }} />
+              <DatePicker
+                selected={endDate}
+                onChange={(date) => setEndDate(date as Date)}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="Time"
+                dateFormat="MMMM d, yyyy h:mm aa"
+                minDate={startDate || minDate}
+                placeholderText="Select end date and time"
+                required
+                className="auth-input"
+                wrapperClassName="w-full"
+                customInput={<input style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.85rem", color: "#374151", outline: "none" }} />}
+              />
             </div>
 
             {error && <span style={{ color: "#ef4444", fontSize: "0.75rem" }}>{error}</span>}
