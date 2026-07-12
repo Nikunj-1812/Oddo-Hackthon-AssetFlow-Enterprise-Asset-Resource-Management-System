@@ -387,3 +387,13 @@
     padding: 3rem 1.5rem;
   }
 }
+
+/* ERP Sidebar Navigation Hover States */
+.sidebar-nav-link:hover {
+  background-color: #2e2a72 !important;
+  color: #ffffff !important;
+}
+
+.logout-btn:hover {
+  background-color: rgba(239, 68, 68, 0.25) !important;
+}
