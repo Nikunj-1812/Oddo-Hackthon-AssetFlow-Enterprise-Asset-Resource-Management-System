@@ -2,6 +2,7 @@ import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import HeaderActions from "./header-actions";
+import SidebarNavClient from "./sidebar-nav-client";
 import {
   LayoutDashboard,
   Boxes,
@@ -134,29 +135,15 @@ export default async function DashboardLayout({
         </Link>
 
         {/* Navigation */}
-        <nav className="erp-sidebar-nav">
-          {sections.map((section) => (
-            <div key={section}>
-              <div className="erp-nav-section-label">{section}</div>
-              {filteredLinks
-                .filter((l) => l.section === section)
-                .map((link) => {
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="erp-nav-link"
-                      id={`nav-${link.href.replace(/\//g, "-")}`}
-                    >
-                      <Icon size={16} className="nav-icon" />
-                      <span className="erp-nav-link-label">{link.label}</span>
-                    </Link>
-                  );
-                })}
-            </div>
-          ))}
-        </nav>
+        <SidebarNavClient
+          links={filteredLinks.map((l) => ({
+            href: l.href,
+            label: l.label,
+            iconName: l.icon.name || "",
+            section: l.section,
+          }))}
+          sections={sections as string[]}
+        />
 
         {/* Footer */}
         <div className="erp-sidebar-footer">
