@@ -19,6 +19,8 @@ interface Props {
 
 const COLORS = ["#92E4BA", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+
 export default function ReportsClient({
   statusData,
   categoryCostData,
@@ -175,7 +177,7 @@ export default function ReportsClient({
                       <td style={{ padding: "8px", fontWeight: 700, color: "#ef4444" }}>{alloc.asset.tag}</td>
                       <td style={{ padding: "8px" }}>{alloc.user?.name || "Dept Assignment"}</td>
                       <td style={{ padding: "8px", color: "#6b7280" }}>
-                        {alloc.expectedReturnDate ? new Date(alloc.expectedReturnDate).toLocaleDateString() : "-"}
+                        {alloc.expectedReturnDate ? fmtDate(alloc.expectedReturnDate) : "-"}
                       </td>
                     </tr>
                   ))

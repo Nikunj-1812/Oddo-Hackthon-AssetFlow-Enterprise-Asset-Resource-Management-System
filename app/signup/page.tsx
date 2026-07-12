@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signupAction } from "@/features/auth/actions";
 
 function SocialIcon({ label, children }: { label: string; children: React.ReactNode }) {
   const [hovered, setHovered] = useState(false);
@@ -15,14 +17,14 @@ function SocialIcon({ label, children }: { label: string; children: React.ReactN
         justifyContent: "center",
         width: "38px",
         height: "38px",
-        border: `1.5px solid ${hovered ? "#7c3aed" : "#d1d5db"}`,
+        border: `1.5px solid ${hovered ? "#92E4BA" : "#d1d5db"}`,
         borderRadius: "8px",
-        color: hovered ? "#7c3aed" : "#6b7280",
+        color: hovered ? "#7cd4a5" : "#6b7280",
         backgroundColor: "#ffffff",
         cursor: "pointer",
         textDecoration: "none",
         transform: hovered ? "translateY(-2px)" : "none",
-        boxShadow: hovered ? "0 4px 10px rgba(124,58,237,0.15)" : "none",
+        boxShadow: hovered ? "0 4px 10px rgba(146,228,186,0.3)" : "none",
         transition: "all 0.2s ease",
       }}
       onMouseEnter={() => setHovered(true)}
@@ -34,11 +36,37 @@ function SocialIcon({ label, children }: { label: string; children: React.ReactN
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [btnHovered, setBtnHovered] = useState(false);
   const [signinHovered, setSigninHovered] = useState(false);
+  
   const [nameFocus, setNameFocus] = useState(false);
   const [emailFocus, setEmailFocus] = useState(false);
   const [passFocus, setPassFocus] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await signupAction(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      setLoading(false);
+    } else {
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/login");
+      }, 1500);
+    }
+  };
 
   return (
     /* Page background */
@@ -46,7 +74,7 @@ export default function SignupPage() {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background: "linear-gradient(135deg, #ede9fe 0%, #f5f3ff 50%, #e0e7ff 100%)",
+        background: "linear-gradient(135deg, #eefdf7 0%, #ffffff 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -64,14 +92,14 @@ export default function SignupPage() {
           minHeight: "480px",
           borderRadius: "20px",
           overflow: "hidden",
-          boxShadow: "0 25px 60px rgba(109, 40, 217, 0.18), 0 8px 24px rgba(0,0,0,0.08)",
+          boxShadow: "0 25px 60px rgba(146, 228, 186, 0.22), 0 8px 24px rgba(0,0,0,0.06)",
         }}
       >
-        {/* LEFT: Purple Info Panel */}
+        {/* LEFT: Green Info Panel */}
         <div
           style={{
             flex: 1,
-            background: "linear-gradient(135deg, #5b21b6 0%, #7c3aed 55%, #6366f1 100%)",
+            background: "linear-gradient(135deg, #92E4BA 0%, #7cd4a5 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -81,8 +109,8 @@ export default function SignupPage() {
           }}
         >
           {/* Decorative bubbles */}
-          <div style={{ position: "absolute", width: "260px", height: "260px", borderRadius: "50%", background: "rgba(255,255,255,0.06)", top: "-70px", left: "-70px", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", width: "180px", height: "180px", borderRadius: "50%", background: "rgba(255,255,255,0.05)", bottom: "-50px", right: "-50px", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: "260px", height: "260px", borderRadius: "50%", background: "rgba(255,255,255,0.18)", top: "-70px", left: "-70px", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: "180px", height: "180px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", bottom: "-50px", right: "-50px", pointerEvents: "none" }} />
 
           <div
             style={{
@@ -96,18 +124,18 @@ export default function SignupPage() {
               maxWidth: "280px",
             }}
           >
-            <h2 style={{ fontSize: "2rem", fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.1 }}>
+            <h2 style={{ fontSize: "2rem", fontWeight: 800, color: "#1e293b", margin: 0, lineHeight: 1.1 }}>
               Welcome Back!
             </h2>
-            <p style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.88)", lineHeight: 1.7, margin: 0 }}>
+            <p style={{ fontSize: "0.88rem", color: "#334155", lineHeight: 1.7, margin: 0 }}>
               To keep connected with us please login with your personal info.
             </p>
             <Link
               href="/login"
               style={{
-                backgroundColor: signinHovered ? "#ffffff" : "transparent",
-                color: signinHovered ? "#6d28d9" : "#ffffff",
-                border: "2px solid #ffffff",
+                backgroundColor: signinHovered ? "#1e293b" : "transparent",
+                color: signinHovered ? "#ffffff" : "#1e293b",
+                border: "2px solid #1e293b",
                 borderRadius: "25px",
                 padding: "9px 36px",
                 fontSize: "0.78rem",
@@ -117,7 +145,7 @@ export default function SignupPage() {
                 textDecoration: "none",
                 display: "inline-block",
                 transform: signinHovered ? "translateY(-1px)" : "none",
-                boxShadow: signinHovered ? "0 6px 18px rgba(0,0,0,0.2)" : "none",
+                boxShadow: signinHovered ? "0 6px 18px rgba(0,0,0,0.1)" : "none",
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={() => setSigninHovered(true)}
@@ -189,6 +217,44 @@ export default function SignupPage() {
               or use your email for registration
             </p>
 
+            {/* Error Message */}
+            {error && (
+              <div
+                style={{
+                  width: "100%",
+                  backgroundColor: "#fef2f2",
+                  border: "1px solid #fee2e2",
+                  color: "#ef4444",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  fontSize: "0.75rem",
+                  boxSizing: "border-box",
+                  textAlign: "center",
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Success Message */}
+            {success && (
+              <div
+                style={{
+                  width: "100%",
+                  backgroundColor: "#f0fdf4",
+                  border: "1px solid #dcfce7",
+                  color: "#15803d",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  fontSize: "0.75rem",
+                  boxSizing: "border-box",
+                  textAlign: "center",
+                }}
+              >
+                Registered successfully! Redirecting to login...
+              </div>
+            )}
+
             {/* Form */}
             <form
               style={{
@@ -197,33 +263,39 @@ export default function SignupPage() {
                 flexDirection: "column",
                 gap: "10px",
               }}
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={handleSubmit}
             >
-              <div style={{ borderBottom: `1.5px solid ${nameFocus ? "#7c3aed" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${nameFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-name"
+                  name="name"
                   type="text"
                   placeholder="Name"
+                  required
                   style={{ width: "100%", border: "none", outline: "none", padding: "9px 4px", fontSize: "0.85rem", color: "#374151", backgroundColor: "transparent", boxSizing: "border-box" }}
                   onFocus={() => setNameFocus(true)}
                   onBlur={() => setNameFocus(false)}
                 />
               </div>
-              <div style={{ borderBottom: `1.5px solid ${emailFocus ? "#7c3aed" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${emailFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-email"
+                  name="email"
                   type="email"
                   placeholder="Email"
+                  required
                   style={{ width: "100%", border: "none", outline: "none", padding: "9px 4px", fontSize: "0.85rem", color: "#374151", backgroundColor: "transparent", boxSizing: "border-box" }}
                   onFocus={() => setEmailFocus(true)}
                   onBlur={() => setEmailFocus(false)}
                 />
               </div>
-              <div style={{ borderBottom: `1.5px solid ${passFocus ? "#7c3aed" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
+              <div style={{ borderBottom: `1.5px solid ${passFocus ? "#92E4BA" : "#e5e7eb"}`, transition: "border-color 0.2s" }}>
                 <input
                   id="signup-password"
+                  name="password"
                   type="password"
                   placeholder="Password"
+                  required
                   style={{ width: "100%", border: "none", outline: "none", padding: "9px 4px", fontSize: "0.85rem", color: "#374151", backgroundColor: "transparent", boxSizing: "border-box" }}
                   onFocus={() => setPassFocus(true)}
                   onBlur={() => setPassFocus(false)}
@@ -232,26 +304,28 @@ export default function SignupPage() {
 
               <button
                 type="submit"
+                disabled={loading}
                 style={{
                   width: "100%",
-                  backgroundColor: btnHovered ? "#5b21b6" : "#6d28d9",
-                  color: "#ffffff",
+                  backgroundColor: loading ? "#aef3d0" : (btnHovered ? "#7cd4a5" : "#92E4BA"),
+                  color: "#1e293b",
                   borderRadius: "25px",
                   padding: "11px",
                   fontSize: "0.78rem",
                   fontWeight: 700,
                   letterSpacing: "0.1em",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   marginTop: "4px",
-                  transform: btnHovered ? "translateY(-1px)" : "none",
-                  boxShadow: btnHovered ? "0 6px 18px rgba(109,40,217,0.35)" : "none",
+                  transform: btnHovered && !loading ? "translateY(-1px)" : "none",
+                  boxShadow: btnHovered && !loading ? "0 6px 18px rgba(146,228,186,0.5)" : "none",
                   transition: "all 0.2s ease",
+                  opacity: loading ? 0.75 : 1,
                 }}
                 onMouseEnter={() => setBtnHovered(true)}
                 onMouseLeave={() => setBtnHovered(false)}
               >
-                SIGN UP
+                {loading ? "REGISTERING..." : "SIGN UP"}
               </button>
             </form>
           </div>

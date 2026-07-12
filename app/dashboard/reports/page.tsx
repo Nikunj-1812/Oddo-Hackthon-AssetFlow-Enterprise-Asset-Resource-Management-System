@@ -107,7 +107,8 @@ export default async function ReportsPage() {
   const monthlyCounts: Record<string, { count: number; cost: number }> = {};
   assetsList.forEach((a) => {
     const date = new Date(a.acquisitionDate);
-    const label = date.toLocaleString("default", { month: "short", year: "numeric" });
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const label = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
     if (!monthlyCounts[label]) {
       monthlyCounts[label] = { count: 0, cost: 0 };
     }
