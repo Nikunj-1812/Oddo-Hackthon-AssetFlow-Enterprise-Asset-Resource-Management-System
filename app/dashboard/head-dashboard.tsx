@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {
-  Boxes, Users, Wrench, Calendar, DollarSign,
+  Boxes, Users, Wrench, Calendar, IndianRupee,
   ArrowRight, TrendingUp, Building2, Package, AlertTriangle
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
@@ -31,7 +31,7 @@ export default function DepartmentHeadDashboard({ deptName, stats, assets, emplo
   const kpis = [
     { title: "Dept. Assets", value: stats.departmentAssetsCount, icon: Boxes, color: "#92E4BA", bg: "#e8faf3", href: "/dashboard/assets" },
     { title: "Total Staff", value: stats.employeesCount, icon: Users, color: "#6366f1", bg: "#eff6ff", href: "/dashboard/organization" },
-    { title: "Asset Value", value: `$${stats.totalAssetsCost.toLocaleString()}`, icon: DollarSign, color: "#f59e0b", bg: "#fffbeb", href: "/dashboard/assets" },
+    { title: "Asset Value", value: `₹${stats.totalAssetsCost.toLocaleString()}`, icon: IndianRupee, color: "#f59e0b", bg: "#fffbeb", href: "/dashboard/assets" },
     { title: "Open Requests", value: stats.activeRequestsCount, icon: Wrench, color: "#ef4444", bg: "#fef2f2", href: "/dashboard/maintenance" },
     { title: "Upcoming Returns", value: stats.upcomingReturnsCount, icon: AlertTriangle, color: "#8b5cf6", bg: "#f5f3ff", href: "/dashboard/allocations" },
     { title: "Active Bookings", value: stats.bookingOverviewCount, icon: Calendar, color: "#3b82f6", bg: "#dbeafe", href: "/dashboard/bookings" },
