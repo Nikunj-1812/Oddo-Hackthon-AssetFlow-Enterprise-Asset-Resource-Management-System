@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+
 interface Props {
   initialAssets: any[];
   categories: any[];
@@ -141,7 +143,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
     const rows = filteredAssets.map((a) => [
       a.tag, a.name, a.category.name, a.location, a.condition,
       a.bookable ? "Yes" : "No", a.status, a.cost,
-      new Date(a.acquisitionDate).toLocaleDateString(),
+      fmtDate(a.acquisitionDate),
     ]);
     const csv = "data:text/csv;charset=utf-8," +
       [headers.join(","), ...rows.map((e) => e.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -529,7 +531,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
                       { icon: Tag, label: "Serial Number", value: selectedAsset.serialNumber || "—" },
                       { icon: DollarSign, label: "Acquisition Cost", value: `$${selectedAsset.cost?.toLocaleString()}` },
                       { icon: MapPin, label: "Location", value: selectedAsset.location },
-                      { icon: Clock, label: "Acquired", value: new Date(selectedAsset.acquisitionDate).toLocaleDateString() },
+                      { icon: Clock, label: "Acquired", value: fmtDate(selectedAsset.acquisitionDate) },
                     ].map((item) => {
                       const Icon = item.icon;
                       return (
@@ -577,7 +579,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
                     <div className="activity-content">
                       <div style={{ fontSize: "0.825rem", fontWeight: 700, color: "#111827" }}>Asset Registered</div>
                       <div style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "2px" }}>
-                        Acquired on {new Date(selectedAsset.acquisitionDate).toLocaleDateString()}
+                        Acquired on {fmtDate(selectedAsset.acquisitionDate)}
                       </div>
                     </div>
                   </div>
@@ -593,7 +595,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
                             Allocated to {alloc.user?.name || alloc.department?.name || "Department"}
                           </div>
                           <div style={{ fontSize: "0.72rem", color: "#6b7280", marginTop: "2px" }}>
-                            Return: {alloc.expectedReturnDate ? new Date(alloc.expectedReturnDate).toLocaleDateString() : "Indefinite"}
+                            Return: {alloc.expectedReturnDate ? fmtDate(alloc.expectedReturnDate) : "Indefinite"}
                           </div>
                           <span className={`status-badge status-${alloc.status?.toLowerCase()}`} style={{ marginTop: "4px", display: "inline-flex" }}>
                             {alloc.status}
@@ -625,7 +627,7 @@ export default function AssetsClient({ initialAssets, categories, canManage }: P
                           <span className={`status-badge priority-${req.priority?.toLowerCase()}`}>{req.priority}</span>
                         </div>
                         <div style={{ fontSize: "0.72rem", color: "#9ca3af" }}>
-                          {new Date(req.createdAt).toLocaleDateString()} · {req.status}
+                          {fmtDate(req.createdAt)} · {req.status}
                         </div>
                       </div>
                     ))

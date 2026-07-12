@@ -24,6 +24,9 @@ const generateTrend = (base: number) =>
     v: Math.max(0, base + Math.floor(Math.random() * 3) - 1),
   }));
 
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA");
+const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
 export default function EmployeeDashboard({ stats, myAssets, myBookings, myRequests }: Props) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -218,7 +221,7 @@ export default function EmployeeDashboard({ stats, myAssets, myBookings, myReque
                       {booking.asset?.name}
                     </div>
                     <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "1px" }}>
-                      {new Date(booking.startTime).toLocaleDateString()} — {new Date(booking.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {fmtDate(booking.startTime)} — {fmtTime(booking.startTime)}
                     </div>
                   </div>
                   <span className="status-badge status-upcoming">Soon</span>

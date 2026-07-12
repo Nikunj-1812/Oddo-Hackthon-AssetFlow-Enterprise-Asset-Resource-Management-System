@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { createAllocation, returnAsset } from "@/features/allocations/actions";
 
+// Locale-fixed date formatter — prevents SSR/client hydration mismatches
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+
 interface Props {
   initialAllocations: any[];
   assets: any[];
@@ -203,11 +206,11 @@ export default function AllocationsClient({ initialAllocations, assets, users, d
                       {alloc.user?.name || alloc.department?.name || "-"}
                     </td>
                     <td style={{ padding: "8px", color: isOverdue ? "#ef4444" : "#4b5563", fontWeight: isOverdue ? 700 : 400 }}>
-                      {alloc.expectedReturnDate ? new Date(alloc.expectedReturnDate).toLocaleDateString() : "-"}
+                      {alloc.expectedReturnDate ? fmtDate(alloc.expectedReturnDate) : "-"}
                       {isOverdue && " (OVERDUE)"}
                     </td>
                     <td style={{ padding: "8px", color: "#6b7280" }}>
-                      {new Date(alloc.createdAt).toLocaleDateString()}
+                      {fmtDate(alloc.createdAt)}
                     </td>
                     <td style={{ padding: "8px" }}>
                       <span
