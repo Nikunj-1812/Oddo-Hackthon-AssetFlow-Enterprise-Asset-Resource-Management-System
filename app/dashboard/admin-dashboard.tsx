@@ -22,6 +22,9 @@ interface Props {
   recentActivity: any[];
 }
 
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
 const generateTrend = (base: number, up: boolean) =>
   Array.from({ length: 7 }, (_, i) => ({
     v: Math.max(0, base + (up ? i : 7 - i) * Math.ceil(base * 0.04) + Math.floor(Math.random() * 2)),
@@ -200,7 +203,7 @@ export default function AdminDashboard({ stats, recentActivity }: Props) {
                       {log.action}
                     </div>
                     <div style={{ fontSize: "0.68rem", color: "#9ca3af", marginTop: "2px" }}>
-                      {new Date(log.timestamp).toLocaleString()}
+                       {fmtDate(log.timestamp)} {fmtTime(log.timestamp)}
                     </div>
                   </div>
                 </div>

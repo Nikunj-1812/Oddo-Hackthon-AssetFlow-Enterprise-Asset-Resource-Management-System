@@ -4,6 +4,9 @@ import { useState } from "react";
 import { createBooking, cancelBooking } from "@/features/bookings/actions";
 import { CalendarDays, Clock, ShieldAlert, BadgeInfo, CheckCircle2, User, HelpCircle, XCircle, FileSpreadsheet } from "lucide-react";
 
+const fmtDate = (d: string | Date) => new Date(d).toLocaleDateString("en-CA"); // YYYY-MM-DD
+const fmtTime = (d: string | Date) => new Date(d).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
 interface Props {
   bookableAssets: any[];
   initialBookings: any[];
@@ -203,10 +206,10 @@ export default function BookingsClient({ bookableAssets, initialBookings }: Prop
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><User size={14} style={{ color: "#9ca3af" }} /> {booking.user?.name}</span>
                     </td>
                     <td style={{ padding: "14px", color: "#4b5563" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Clock size={12} style={{ color: "#9ca3af" }} /> {new Date(booking.startTime).toLocaleString()}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Clock size={12} style={{ color: "#9ca3af" }} /> {fmtDate(booking.startTime)} {fmtTime(booking.startTime)}</span>
                     </td>
                     <td style={{ padding: "14px", color: "#4b5563" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Clock size={12} style={{ color: "#9ca3af" }} /> {new Date(booking.endTime).toLocaleString()}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><Clock size={12} style={{ color: "#9ca3af" }} /> {fmtDate(booking.endTime)} {fmtTime(booking.endTime)}</span>
                     </td>
                     <td style={{ padding: "14px" }}>
                       <span
