@@ -1,0 +1,255 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  ASSET_MANAGER
+  DEPARTMENT_HEAD
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ALLOCATED
+  RESERVED
+  UNDER_MAINTENANCE
+  LOST
+  RETIRED
+  DISPOSED
+}
+
+enum Condition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  TECHNICIAN_ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum BookingStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum AuditItemStatus {
+  VERIFIED
+  MISSING
+  DAMAGED
+}
+
+model User {
+  id               String        @id @default(uuid())
+  email            String        @unique
+  passwordHash     String
+  name             String
+  role             Role          @default(EMPLOYEE)
+  status           UserStatus    @default(ACTIVE)
+  departmentId     String?
+  department       Department?   @relation("EmployeeDept", fields: [departmentId], references: [id])
+  managedDept      Department?   @relation("DeptManager")
+  
+  allocations      Allocation[]
+  bookings         Booking[]
+  raisedIssues     MaintenanceRequest[] @relation("RaisedByUser")
+  resolvedIssues   MaintenanceRequest[] @relation("ApprovedByUser")
+  verifiedAudits   AuditItem[]
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  @@index([email])
+  @@index([role])
+}
+
+model Department {
+  id             String       @id @default(uuid())
+  name           String       @unique
+  status         UserStatus   @default(ACTIVE)
+  parentId       String?
+  parent         Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+  subDepts       Department[] @relation("DeptHierarchy")
+  managerId      String?      @unique
+  manager        User?        @relation("DeptManager", fields: [managerId], references: [id])
+  
+  employees      User[]       @relation("EmployeeDept")
+  allocations    Allocation[]
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Category {
+  id                   String   @id @default(uuid())
+  name                 String   @unique
+  status               UserStatus @default(ACTIVE)
+  customFieldsSchema   Json?    // Optional dynamic schema attributes
+  assets               Asset[]
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Asset {
+  id               String        @id @default(uuid())
+  tag              String        @unique // AF-0001
+  name             String
+  categoryId       String
+  category         Category      @relation(fields: [categoryId], references: [id])
+  serialNumber     String?       @unique
+  cost             Float
+  acquisitionDate  DateTime
+  location         String
+  condition        Condition     @default(NEW)
+  imageKey         String?
+  documentKey      String?
+  bookable         Boolean       @default(false)
+  status           AssetStatus   @default(AVAILABLE)
+  
+  allocations      Allocation[]
+  bookings         Booking[]
+  maintenanceRequests MaintenanceRequest[]
+  auditItems       AuditItem[]
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  
+  @@index([tag])
+  @@index([status])
+  @@index([categoryId])
+}
+
+model Allocation {
+  id                 String        @id @default(uuid())
+  assetId            String
+  asset              Asset         @relation(fields: [assetId], references: [id])
+  userId             String?
+  user               User?         @relation(fields: [userId], references: [id])
+  departmentId       String?
+  department         Department?   @relation(fields: [departmentId], references: [id])
+  expectedReturnDate DateTime?
+  actualReturnDate   DateTime?
+  status             RequestStatus @default(PENDING)
+  conditionOnReturn  Condition?
+  notes              String?
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model Booking {
+  id        String        @id @default(uuid())
+  assetId   String
+  asset     Asset         @relation(fields: [assetId], references: [id])
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  startTime DateTime
+  endTime   DateTime
+  status    BookingStatus @default(UPCOMING)
+  
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([assetId, startTime, endTime])
+}
+
+model MaintenanceRequest {
+  id            String        @id @default(uuid())
+  assetId       String
+  asset         Asset         @relation(fields: [assetId], references: [id])
+  userId        String
+  raisedBy      User          @relation("RaisedByUser", fields: [userId], references: [id])
+  description   String
+  priority      String        // Zod check: LOW, MEDIUM, HIGH, CRITICAL
+  photoUrl      String?
+  status        RequestStatus @default(PENDING)
+  assignedTo    String?       // Technician Name
+  approvedById  String?
+  approvedBy    User?         @relation("ApprovedByUser", fields: [approvedById], references: [id])
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model AuditCycle {
+  id           String      @id @default(uuid())
+  name         String
+  location     String
+  startDate    DateTime
+  endDate      DateTime
+  status       AuditStatus @default(DRAFT)
+  items        AuditItem[]
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model AuditItem {
+  id             String          @id @default(uuid())
+  auditCycleId   String
+  auditCycle     AuditCycle      @relation(fields: [auditCycleId], references: [id], onDelete: Cascade)
+  assetId        String
+  asset          Asset           @relation(fields: [assetId], references: [id])
+  verifiedStatus AuditItemStatus @default(VERIFIED)
+  notes          String?
+  verifiedById   String
+  verifiedBy     User            @relation(fields: [verifiedById], references: [id])
+  
+  verifiedAt     DateTime        @default(now())
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  targetType String
+  targetId   String
+  oldValue   Json?
+  newValue   Json?
+  timestamp  DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  category  String   // e.g. ALLOCATION, BOOKING, SYSTEM, MAINTENANCE, AUDIT
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
